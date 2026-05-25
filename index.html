@@ -16,9 +16,8 @@
     <span>Automation Studio · Query Activity · SFMC T-SQL</span>
   </div>
   <button id="btn-theme" title="라이트/다크 모드 전환"
-    style="margin-left:auto; background:none; border:1px solid var(--border); border-radius:20px; padding:5px 12px; cursor:pointer; color:var(--text-muted); font-size:13px; display:flex; align-items:center; gap:6px; flex-shrink:0; transition:all 0.2s;">
+    style="margin-left:auto; background:none; border:1px solid var(--border); border-radius:20px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.2s;">
     <span id="theme-icon">☀️</span>
-    <span id="theme-label">라이트 모드</span>
   </button>
 </div>
 
@@ -167,21 +166,18 @@
 
 <script>
 // ─── 라이트/다크 모드 토글 ────────────────────────────────────
-const themeBtn   = document.getElementById('btn-theme');
-const themeIcon  = document.getElementById('theme-icon');
-const themeLabel = document.getElementById('theme-label');
+const themeBtn  = document.getElementById('btn-theme');
+const themeIcon = document.getElementById('theme-icon');
 let isLight = localStorage.getItem('sfmc_theme') === 'light';
 
 function applyTheme() {
   if (isLight) {
     document.body.classList.add('light');
-    themeIcon.textContent  = '🌙';
-    themeLabel.textContent = '다크 모드';
+    themeIcon.textContent = '🌙';
     if (typeof monaco !== 'undefined') monaco.editor.setTheme('vs');
   } else {
     document.body.classList.remove('light');
-    themeIcon.textContent  = '☀️';
-    themeLabel.textContent = '라이트 모드';
+    themeIcon.textContent = '☀️';
     if (typeof monaco !== 'undefined') monaco.editor.setTheme('vs-dark');
   }
   localStorage.setItem('sfmc_theme', isLight ? 'light' : 'dark');
