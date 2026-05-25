@@ -11,6 +11,28 @@
   --success: #a6e3a1;
 }
 
+body.light {
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --border: #d1d5db;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --accent: #0070D2;
+  --error: #dc2626;
+  --warning: #d97706;
+  --info: #0891b2;
+  --success: #16a34a;
+}
+
+/* 라이트 모드 Monaco 에디터 배경 */
+body.light #editor-container { filter: none; }
+body.light .snippet-bar { background: #f9fafb; }
+body.light .btn-fix { background: #fef3c7; color: #d97706; border-color: #d97706; }
+body.light .snippet-btn { background: #e5e7eb; color: #0070D2; }
+body.light .snippet-btn:hover { background: #d1d5db; }
+body.light .de-chip { background: #e5e7eb; }
+body.light .saved-item { background: #f9fafb; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
