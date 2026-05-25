@@ -116,3 +116,41 @@ function validate(sql) {
 
   return results;
 }
+
+function autoFix(sql) {
+  if (!sql || !sql.trim()) return sql;
+  let fixed = sql;
+
+  // 백틱 → 대괄호
+  fixed = fixed.replace(/`([^`]+)`/g, '[$1]');
+
+  // NOW() → GETDATE()
+  fixed = fixed.replace(/\bNOW\s*\(\s*\)/gi, 'GETDATE()');
+
+  // IFNULL → ISNULL
+  fixed = fixed.replace(/\bIFNULL\s*\(/gi, 'ISNULL(');
+
+  // DATE_ADD(date, INTERVAL n UNIT) → DATEADD(UNIT, n, date)
+  fixed = fixed.replace(
+    /\bDATE_ADD\s*\(\s*([^,]+?)\s*,\s*INTERVAL\s+(\d+)\s+(DAY|MONTH|YEAR|HOUR|MINUTE)\s*\)/gi,
+    (_, date, n, unit) => `DATEADD(${unit.toUpperCase()}, ${n}, ${date.trim()})`
+  );
+
+  // DATE_SUB(date, INTERVAL n UNIT) → DATEADD(UNIT, -n, date)
+  fixed = fixed.replace(
+    /\bDATE_SUB\s*\(\s*([^,]+?)\s*,\s*INTERVAL\s+(\d+)\s+(DAY|MONTH|YEAR|HOUR|MINUTE)\s*\)/gi,
+    (_, date, n, unit) => `DATEADD(${unit.toUpperCase()}, -${n}, ${date.trim()})`
+  );
+
+  // LIMIT N → SELECT TOP N (LIMIT 제거 후 SELECT 뒤에 TOP N 삽입)
+  const limitMatch = fixed.match(/\bLIMIT\s+(\d+)/i);
+  if (limitMatch) {
+    const n = limitMatch[1];
+    fixed = fixed.replace(/\bLIMIT\s+\d+/i, '').trim();
+    if (!/\bSELECT\s+TOP\b/i.test(fixed)) {
+      fixed = fixed.replace(/\bSELECT\b/i, `SELECT TOP ${n}`);
+    }
+  }
+
+  return fixed;
+}

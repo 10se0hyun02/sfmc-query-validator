@@ -28,8 +28,20 @@
   <div class="editor-panel">
     <div class="editor-toolbar">
       <button class="btn btn-primary" id="btn-action">검사하기</button>
+      <button class="btn btn-fix" id="btn-autofix">🔧 자동 교정</button>
+      <div class="toolbar-sep"></div>
+      <button class="btn btn-secondary" id="btn-save">💾 저장</button>
+      <button class="btn btn-secondary" id="btn-load">📂 불러오기</button>
       <button class="btn btn-secondary" id="btn-clear">지우기</button>
-      <span id="editor-hint">SQL을 입력하고 검사하기를 클릭하세요</span>
+    </div>
+    <div class="snippet-bar">
+      <span class="snippet-label">삽입:</span>
+      <button class="snippet-btn" onclick="insertSnippet('GETDATE()')">GETDATE()</button>
+      <button class="snippet-btn" onclick="insertSnippet('DATEADD(DAY, -30, GETDATE())')">DATEADD</button>
+      <button class="snippet-btn" onclick="insertSnippet('DATEDIFF(DAY, StartDate, GETDATE())')">DATEDIFF</button>
+      <button class="snippet-btn" onclick="insertSnippet('ISNULL(col, \'\')')">ISNULL</button>
+      <button class="snippet-btn" onclick="insertSnippet('SELECT TOP 1000\n\nINTO [Result_DE]\nFROM ')">SELECT TOP</button>
+      <button class="snippet-btn" onclick="insertSnippet('DATEADD(DAY, -30, GETDATE())')">-30일</button>
     </div>
     <div id="editor-container"></div>
   </div>
@@ -116,6 +128,28 @@
 
 </div>
 
+<!-- 저장 모달 -->
+<div class="modal-overlay" id="save-modal" style="display:none" onclick="closeModal('save-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 style="font-size:15px; font-weight:600; margin-bottom:14px;">💾 쿼리 저장</h3>
+    <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">쿼리 이름</label>
+    <input class="mock-input" id="save-name" placeholder="예) 월간 구매 고객 조회" onkeydown="if(event.key==='Enter') saveQuery()" />
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <button class="btn btn-primary" style="flex:1" onclick="saveQuery()">저장</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal('save-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 불러오기 모달 -->
+<div class="modal-overlay" id="load-modal" style="display:none" onclick="closeModal('load-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 style="font-size:15px; font-weight:600; margin-bottom:14px;">📂 저장된 쿼리</h3>
+    <div id="saved-list"></div>
+    <button class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="closeModal('load-modal')">닫기</button>
+  </div>
+</div>
+
 <!-- sql.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
 <!-- Monaco Editor -->
@@ -154,6 +188,32 @@ require(['vs/editor/editor.main'], function () {
     lineNumbers: 'on',
     renderLineHighlight: 'all',
     padding: { top: 12 },
+    suggestOnTriggerCharacters: true,
+  });
+
+  // SFMC 함수 자동완성 등록
+  monaco.languages.registerCompletionItemProvider('sql', {
+    provideCompletionItems: function(model, position) {
+      const range = {
+        startLineNumber: position.lineNumber, endLineNumber: position.lineNumber,
+        startColumn: position.column, endColumn: position.column,
+      };
+      const fn = (label, insertText, detail) => ({
+        label, insertText, detail, range,
+        kind: monaco.languages.CompletionItemKind.Function,
+        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+      });
+      return { suggestions: [
+        fn('GETDATE',    'GETDATE()',                               '현재 날짜/시간'),
+        fn('DATEADD',    'DATEADD(${1:DAY}, ${2:-30}, GETDATE())', 'DATEADD(unit, n, date)'),
+        fn('DATEDIFF',   'DATEDIFF(${1:DAY}, ${2:StartDate}, GETDATE())', 'DATEDIFF(unit, start, end)'),
+        fn('ISNULL',     "ISNULL(${1:col}, ${2:''})",              'NULL이면 기본값 반환'),
+        fn('STRING_AGG', "STRING_AGG(${1:col}, ',')",              'GROUP_CONCAT 대체'),
+        fn('CONCAT',     'CONCAT(${1:a}, ${2:b})',                 '문자열 합치기'),
+        fn('TOP',        'TOP ${1:1000}',                          '결과 행 수 제한'),
+        fn('INTO',       'INTO [${1:Result_DE}]',                  '결과 DE 지정'),
+      ]};
+    }
   });
 });
 
@@ -192,6 +252,101 @@ document.getElementById('btn-action').addEventListener('click', () => {
 document.getElementById('btn-clear').addEventListener('click', () => {
   if (editor) editor.setValue('');
 });
+
+// ─── 자동 교정 ───────────────────────────────────────────────
+document.getElementById('btn-autofix').addEventListener('click', () => {
+  if (!editor) return;
+  const before = editor.getValue();
+  const fixed  = autoFix(before);
+  if (fixed === before) {
+    alert('교정할 항목이 없습니다.');
+    return;
+  }
+  editor.setValue(fixed);
+  if (activeTab === 'validate') runValidate();
+});
+
+// ─── 스니펫 삽입 ──────────────────────────────────────────────
+function insertSnippet(text) {
+  if (!editor) return;
+  const pos = editor.getPosition();
+  editor.executeEdits('snippet', [{
+    range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
+    text,
+  }]);
+  editor.focus();
+}
+
+// ─── 모달 제어 ────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+// ─── 저장 ─────────────────────────────────────────────────────
+document.getElementById('btn-save').addEventListener('click', () => {
+  document.getElementById('save-name').value = '';
+  openModal('save-modal');
+  setTimeout(() => document.getElementById('save-name').focus(), 100);
+});
+
+function saveQuery() {
+  const name = document.getElementById('save-name').value.trim();
+  if (!name) { document.getElementById('save-name').style.borderColor = 'var(--error)'; return; }
+  const sql   = editor ? editor.getValue() : '';
+  const saved = JSON.parse(localStorage.getItem('sfmc_queries') || '{}');
+  saved[name] = { sql, date: new Date().toLocaleDateString('ko-KR') };
+  localStorage.setItem('sfmc_queries', JSON.stringify(saved));
+  closeModal('save-modal');
+}
+
+// ─── 불러오기 ─────────────────────────────────────────────────
+document.getElementById('btn-load').addEventListener('click', () => {
+  const saved = JSON.parse(localStorage.getItem('sfmc_queries') || '{}');
+  const keys  = Object.keys(saved);
+  const listEl = document.getElementById('saved-list');
+
+  if (keys.length === 0) {
+    listEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px;">저장된 쿼리 없음</div>';
+  } else {
+    listEl.innerHTML = keys.map(k => `
+      <div class="saved-item">
+        <div>
+          <div style="font-size:13px;font-weight:500;">${k}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${saved[k].date}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn btn-primary" style="font-size:11px;padding:3px 10px;"
+            onclick="loadQuery(this)">불러오기</button>
+          <button class="btn btn-danger"
+            onclick="deleteQuery(this)">삭제</button>
+        </div>
+      </div>`
+    ).join('');
+    // 쿼리 이름을 data attr에 안전하게 저장
+    listEl.querySelectorAll('.saved-item').forEach((el, i) => {
+      el.dataset.key = keys[i];
+      el.querySelector('.btn-primary').dataset.key = keys[i];
+      el.querySelector('.btn-danger').dataset.key  = keys[i];
+    });
+  }
+  openModal('load-modal');
+});
+
+function loadQuery(btn) {
+  const name  = btn.dataset.key;
+  const saved = JSON.parse(localStorage.getItem('sfmc_queries') || '{}');
+  if (saved[name] && editor) {
+    editor.setValue(saved[name].sql);
+    closeModal('load-modal');
+  }
+}
+
+function deleteQuery(btn) {
+  const name  = btn.dataset.key;
+  const saved = JSON.parse(localStorage.getItem('sfmc_queries') || '{}');
+  delete saved[name];
+  localStorage.setItem('sfmc_queries', JSON.stringify(saved));
+  document.getElementById('btn-load').click();
+}
 
 // ─── Validate ─────────────────────────────────────────────────
 function runValidate() {
