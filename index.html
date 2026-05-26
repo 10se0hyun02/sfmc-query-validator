@@ -24,7 +24,6 @@
 <!-- Tabs -->
 <div class="tabs">
   <button class="tab-btn active" data-tab="validate">✅ Validate</button>
-  <button class="tab-btn" data-tab="mock">▶ Mock Run</button>
   <button class="tab-btn" data-tab="connect">🔗 Connect SFMC</button>
 </div>
 
@@ -65,35 +64,6 @@
         </div>
       </div>
 
-      <!-- === Mock Run Tab === -->
-      <div id="tab-mock" style="display:none">
-        <div class="mock-section">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 style="font-size:13px; font-weight:600;">📊 DE 데이터 정의</h3>
-            <button class="btn btn-secondary" id="btn-add-de" style="font-size:12px; padding:4px 10px;">+ DE 추가</button>
-          </div>
-
-          <!-- DE Chips -->
-          <div class="de-chips" id="de-chips"></div>
-
-          <!-- Active DE editor -->
-          <div id="de-editor-area">
-            <div class="empty-state" style="padding:20px;">
-              <div class="icon">🗄️</div>
-              <div style="font-size:13px;">DE 추가 버튼으로 테이블 데이터를 입력하세요</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="border-top:1px solid var(--border); padding-top:12px; margin-bottom:16px;">
-          <button class="btn btn-run" id="btn-mock-run" style="width:100%;">▶ Mock 실행</button>
-          <div style="font-size:11px; color:var(--text-muted); margin-top:6px; text-align:center;">
-            INTO 절은 자동으로 제거 후 실행됩니다
-          </div>
-        </div>
-
-        <div id="mock-result"></div>
-      </div>
 
       <!-- === Connect SFMC Tab === -->
       <div id="tab-connect" style="display:none">
@@ -162,7 +132,6 @@
 <!-- Monaco Editor -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 <script src="validator.js"></script>
-<script src="mock-runner.js"></script>
 
 <script>
 // ─── 라이트/다크 모드 토글 ────────────────────────────────────
@@ -294,12 +263,10 @@ require(['vs/editor/editor.main'], function () {
 let activeTab = 'validate';
 const tabContents = {
   validate: document.getElementById('tab-validate'),
-  mock: document.getElementById('tab-mock'),
   connect: document.getElementById('tab-connect'),
 };
 const tabLabels = {
   validate: '검사하기',
-  mock: '▶ Mock 실행',
   connect: '연결 테스트',
 };
 
@@ -318,7 +285,6 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 // ─── 액션 버튼 ───────────────────────────────────────────────
 document.getElementById('btn-action').addEventListener('click', () => {
   if (activeTab === 'validate') runValidate();
-  else if (activeTab === 'mock') runMockQuery();
   else if (activeTab === 'connect') connectSFMC();
 });
 
@@ -466,103 +432,6 @@ function runValidate() {
     </div>`;
 }
 
-// ─── Mock Run ─────────────────────────────────────────────────
-let mockTables = [];
-let activeDEIndex = null;
-
-function renderDEChips() {
-  const chips = document.getElementById('de-chips');
-  if (mockTables.length === 0) {
-    chips.innerHTML = '';
-    return;
-  }
-  chips.innerHTML = mockTables.map((t, i) => `
-    <div class="de-chip ${i === activeDEIndex ? 'active' : ''}" data-idx="${i}" onclick="selectDE(${i})">
-      ${t.name}
-      <span class="remove" onclick="removeDE(event, ${i})">×</span>
-    </div>`).join('');
-}
-
-function selectDE(idx) {
-  activeDEIndex = idx;
-  renderDEChips();
-  renderDEEditor();
-}
-
-function removeDE(e, idx) {
-  e.stopPropagation();
-  mockTables.splice(idx, 1);
-  if (activeDEIndex >= mockTables.length) activeDEIndex = mockTables.length - 1;
-  renderDEChips();
-  renderDEEditor();
-}
-
-function renderDEEditor() {
-  const area = document.getElementById('de-editor-area');
-  if (mockTables.length === 0 || activeDEIndex === null || activeDEIndex < 0) {
-    area.innerHTML = `<div class="empty-state" style="padding:20px;"><div class="icon">🗄️</div><div style="font-size:13px;">DE 추가 버튼으로 테이블 데이터를 입력하세요</div></div>`;
-    return;
-  }
-  const t = mockTables[activeDEIndex];
-  area.innerHTML = `
-    <div class="mock-section">
-      <label>DE 이름</label>
-      <input class="mock-input" id="de-name-input" value="${t.name}"
-        oninput="mockTables[${activeDEIndex}].name=this.value; renderDEChips();" style="margin-bottom:8px;" />
-      <label>CSV 데이터 (첫 줄이 컬럼명)</label>
-      <textarea class="mock-input mock-textarea" id="de-csv-input"
-        oninput="mockTables[${activeDEIndex}].csv=this.value;">${t.csv}</textarea>
-    </div>`;
-}
-
-document.getElementById('btn-add-de').addEventListener('click', () => {
-  const idx = mockTables.length;
-  mockTables.push({ name: `DE_${idx + 1}`, csv: 'ContactKey,Email,Name\n001,a@test.com,홍길동\n002,b@test.com,김영희' });
-  activeDEIndex = idx;
-  renderDEChips();
-  renderDEEditor();
-});
-
-document.getElementById('btn-mock-run').addEventListener('click', runMockQuery);
-
-async function runMockQuery() {
-  if (!editor) return;
-  const sql = editor.getValue().trim();
-  if (!sql) return;
-
-  const resultEl = document.getElementById('mock-result');
-  resultEl.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">⏳ 실행 중...</div>`;
-
-  try {
-    const { columns, rows, rowCount } = await runMock(sql, mockTables);
-
-    if (columns.length === 0) {
-      resultEl.innerHTML = `<div style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">결과 없음 (0행)</div>`;
-      return;
-    }
-
-    const headerCells = columns.map((c) => `<th>${c}</th>`).join('');
-    const bodyRows = rows.map((row) =>
-      `<tr>${row.map((v) => `<td>${v ?? ''}</td>`).join('')}</tr>`
-    ).join('');
-
-    resultEl.innerHTML = `
-      <div class="result-section">
-        <h3>📋 실행 결과</h3>
-        <div class="result-count">${rowCount}행 반환됨</div>
-        <div class="result-table-wrap">
-          <table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>
-        </div>
-      </div>`;
-  } catch (err) {
-    resultEl.innerHTML = `
-      <div class="issue-item error">
-        <span class="issue-badge error">실행 오류</span>
-        <div class="issue-msg">${err.message}</div>
-        <div class="issue-suggestion">💡 SQL 문법을 확인하거나, DE 이름이 일치하는지 확인하세요.</div>
-      </div>`;
-  }
-}
 
 // ─── Connect SFMC ─────────────────────────────────────────────
 document.getElementById('btn-connect').addEventListener('click', connectSFMC);
