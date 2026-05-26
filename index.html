@@ -392,80 +392,96 @@ INSERT INTO INTRA.SS_SERVICE_ACTION_HIST_DTL (
   ,'[[CONTEXT_ORIGINAL_JOURNEY_ID]]'   -- ← SOLCALL_INFO
 )`,
 
-  ca_mail: `INSERT INTO INTRA.CA_MAIL_LIST (
-  SEQ,
-  EMAIL,
-  SENDYN,
-  ENTERDATE,
-  MODIFYDATE,
-  CUST_ID,
-  NAME,
-  USER_ID,
-  I_SERVICE_MASTER_SEQ,
-  I_SERVICE_ACTION_HIST_SEQ,
-  MCE_ED_KEY,
-  MCE_ED_FIELD,
-  SOLCALL_INFO,
-  SF_SERVICE_NM,
-  CMPNCODE
+  ca_mail: `-- CA_MAIL_LIST : 이메일 발송 요청 적재 (MCE Event-Triggered Email)
+-- ※ I_SERVICE_MASTER_SEQ · MCE_ED_KEY · MCE_ED_FIELD · SF_SERVICE_NM · CMPNCODE 는 캠페인마다 다름 — 사전 확인 필요
+INSERT INTO INTRA.CA_MAIL_LIST (
+   SEQ                       -- 자동 채번 (NEXTVAL)
+  ,EMAIL                     -- 수신 이메일 주소
+  ,SENDYN                    -- 발송 여부 Y/N
+  ,ENTERDATE                 -- 등록 일시
+  ,MODIFYDATE                -- 수정 일시
+  ,CUST_ID                   -- 후원자 번호 (Journey 변수)
+  ,NAME                      -- 후원자 이름 (Journey 변수)
+  ,USER_ID                   -- 요청 주체
+  ,I_SERVICE_MASTER_SEQ      -- 서비스 마스터 번호
+  ,I_SERVICE_ACTION_HIST_SEQ -- 이력 SEQ (YYMMDD 6자리 + 행번호 7자리 + 코드 6자리)
+  ,MCE_ED_KEY                -- MCE Event Definition Key
+  ,MCE_ED_FIELD              -- MCE API 데이터 페이로드 (JSON)
+  ,SOLCALL_INFO              -- Journey 실행 ID
+  ,SF_SERVICE_NM             -- SF 서비스명
+  ,CMPNCODE                  -- 캠페인 코드
 ) VALUES (
-  INTRA.SEQ_CA_MAIL_LIST.NEXTVAL,
-  '[[EmailAddress]]',
-  'Y',
-  SYSDATE,
-  SYSDATE,
-  '[[SubscriberKey]]',
-  '[[FirstName]]',
-  'CRM',
-  '001414',
-  TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0071p2',
-  'APIEvent-9f1bfecf-ba0f-e212-76b3-7453122338ad',
-  '"Data": {"SubscriberKey": "[[SubscriberKey]]","EmailAddress": "[[EmailAddress]]","ServiceCode": "001414","SponsorNumber": "[[SubscriberKey]]","FirstName": "[[FirstName]]"}',
-  '[[CONTEXT_ORIGINAL_JOURNEY_ID]]',
-  '#71-2해외사업결과보고(A)_em',
-  20000881
+   INTRA.SEQ_CA_MAIL_LIST.NEXTVAL          -- ← SEQ
+  ,'[[EmailAddress]]'                      -- ← EMAIL
+  ,'Y'                                     -- ← SENDYN
+  ,SYSDATE                                 -- ← ENTERDATE
+  ,SYSDATE                                 -- ← MODIFYDATE
+  ,'[[SubscriberKey]]'                     -- ← CUST_ID
+  ,'[[FirstName]]'                         -- ← NAME
+  ,'CRM'                                   -- ← USER_ID
+  ,'001414'                                -- ← I_SERVICE_MASTER_SEQ  ※ 변경 필요
+  ,TO_CHAR(SYSDATE, 'YYMMDD')
+   || LPAD('[[row_num]]', 7, '0')
+   || '0071p2'                             -- ← I_SERVICE_ACTION_HIST_SEQ  ※ 코드 변경 필요
+  ,'APIEvent-9f1bfecf-ba0f-e212-76b3-7453122338ad'
+                                           -- ← MCE_ED_KEY  ※ 변경 필요
+  ,'"Data": {"SubscriberKey": "[[SubscriberKey]]","EmailAddress": "[[EmailAddress]]","ServiceCode": "001414","SponsorNumber": "[[SubscriberKey]]","FirstName": "[[FirstName]]"}'
+                                           -- ← MCE_ED_FIELD  ※ 필드·값 변경 필요
+  ,'[[CONTEXT_ORIGINAL_JOURNEY_ID]]'       -- ← SOLCALL_INFO
+  ,'#71-2해외사업결과보고(A)_em'           -- ← SF_SERVICE_NM  ※ 변경 필요
+  ,20000881                                -- ← CMPNCODE  ※ 변경 필요
 )`,
 
-  ca_sms: `INSERT INTO INTRA.CA_SMS_LIST (
-  SN,
-  CHANNEL,
-  PHONE_NUM,
-  SMS_SND_NUM,
-  REQ_DEPT_CD,
-  REQ_USR_ID,
-  REQ_DTM,
-  SMS_SND_YN,
-  SMS_SND_DTM,
-  RSLT_CD,
-  SND_MSG,
-  TMPL_CD,
-  TRAN_STS,
-  SLOT1,
-  SLOT2,
-  TR_TYPE_CD,
-  TYPE,
-  SOLCALL_INFO,
-  SF_SERVICE_NM
+  ca_sms: `-- CA_SMS_LIST : SMS/알림톡 발송 요청 적재 (MNWISE 연동)
+-- ※ SN의 서비스번호(-001412)·코드(0071p2), TMPL_CD, SF_SERVICE_NM 는 캠페인마다 다름 — 사전 확인 필요
+INSERT INTO INTRA.CA_SMS_LIST (
+   SN            -- 발송 고유 번호 (MNWISE 시스템)
+  ,CHANNEL       -- 채널 구분 (A=알림톡)
+  ,PHONE_NUM     -- 수신 전화번호 (E.164 형식)
+  ,SMS_SND_NUM   -- 발신 번호
+  ,REQ_DEPT_CD   -- 요청 부서 코드
+  ,REQ_USR_ID    -- 요청 사용자 ID
+  ,REQ_DTM       -- 요청 일시 YYYYMMDDHH24MISS
+  ,SMS_SND_YN    -- 발송 여부 Y/N
+  ,SMS_SND_DTM   -- 발송 일시
+  ,RSLT_CD       -- 결과 코드 (0000=성공)
+  ,SND_MSG       -- 발송 메시지 내용
+  ,TMPL_CD       -- 알림톡 템플릿 코드
+  ,TRAN_STS      -- 전송 상태
+  ,SLOT1         -- 후원자 번호 (매핑용)
+  ,SLOT2         -- 이력 SEQ (서비스번호 + 날짜 + 행번호 + 코드)
+  ,TR_TYPE_CD    -- 전송 타입 코드
+  ,TYPE          -- 채널 타입
+  ,SOLCALL_INFO  -- Journey 실행 ID
+  ,SF_SERVICE_NM -- SF 서비스명
 ) VALUES (
-  'MNWISE-'|| TO_CHAR(SYSDATE, 'YYYYMMDDHH24') || '0000' ||'-' || '[[SubscriberKey]]' || '-001412' || '+' || TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0071p2',
-  'A',
-  '[[FormattedE164PhoneNumber]]',
-  '15881940',
-  'CRM',
-  'CRM',
-  TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
-  'Y',
-  TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
-  '0000',
-  '[[FirstName]] 후원자님께 발송되는 메시지 내용을 여기에 입력하세요.',
-  '797860df_202642013215',
-  '2',
-  '[[SubscriberKey]]',
-  '001412' || '+' || TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0071p2',
-  'B',
-  '07',
-  '[[CONTEXT_ORIGINAL_JOURNEY_ID]]',
-  '#71-2국내사업결과보고(A)_msg'
+   'MNWISE-'
+   || TO_CHAR(SYSDATE, 'YYYYMMDDHH24') || '0000'
+   || '-' || '[[SubscriberKey]]'
+   || '-001412+'
+   || TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0071p2'
+                                          -- ← SN  ※ 서비스번호(-001412)·코드(0071p2) 변경 필요
+  ,'A'                                    -- ← CHANNEL
+  ,'[[FormattedE164PhoneNumber]]'         -- ← PHONE_NUM
+  ,'15881940'                             -- ← SMS_SND_NUM
+  ,'CRM'                                  -- ← REQ_DEPT_CD
+  ,'CRM'                                  -- ← REQ_USR_ID
+  ,TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')  -- ← REQ_DTM
+  ,'Y'                                    -- ← SMS_SND_YN
+  ,TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')  -- ← SMS_SND_DTM
+  ,'0000'                                 -- ← RSLT_CD
+  ,'[[FirstName]] 후원자님께 발송되는 메시지 내용을 여기에 입력하세요.'
+                                          -- ← SND_MSG  ※ 변경 필요
+  ,'797860df_202642013215'               -- ← TMPL_CD  ※ 변경 필요
+  ,'2'                                    -- ← TRAN_STS
+  ,'[[SubscriberKey]]'                   -- ← SLOT1
+  ,'001412+'
+   || TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0071p2'
+                                          -- ← SLOT2  ※ 코드 변경 필요
+  ,'B'                                    -- ← TR_TYPE_CD
+  ,'07'                                   -- ← TYPE
+  ,'[[CONTEXT_ORIGINAL_JOURNEY_ID]]'     -- ← SOLCALL_INFO
+  ,'#71-2국내사업결과보고(A)_msg'         -- ← SF_SERVICE_NM  ※ 변경 필요
 )`,
 
   ca_cmc_target: `INSERT INTO INTRA.CA_CMC_TARGET_LIST (
