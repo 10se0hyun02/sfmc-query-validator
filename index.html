@@ -805,11 +805,23 @@ document.addEventListener('click', e => {
 // ── DE List (SOAP) ────────────────────────────────────────────────
 sfmc.deList = [];
 
+function extractSoapToken(jwtToken) {
+  try {
+    const parts = jwtToken.split('.');
+    if (parts.length !== 3) return jwtToken;
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64.padEnd(b64.length + (4 - b64.length % 4) % 4, '=');
+    const payload = JSON.parse(atob(padded));
+    return payload.access_token || jwtToken;
+  } catch { return jwtToken; }
+}
+
 async function loadDEList(mode) {
   const btn       = document.getElementById(`${mode}-de-list-btn`);
-  const token     = sfmc.shared.token || sfmc[mode].token;
+  const rawToken  = sfmc.shared.token || sfmc[mode].token;
+  const token     = extractSoapToken(rawToken);
   const subdomain = sfmc.shared.subdomain || sfmc[mode].subdomain;
-  if (!token) { btn.textContent = '연결 먼저!'; setTimeout(() => btn.textContent = '목록 불러오기', 2000); return; }
+  if (!rawToken) { btn.textContent = '연결 먼저!'; setTimeout(() => btn.textContent = '목록 불러오기', 2000); return; }
 
   btn.textContent = '⏳ 불러오는 중...';
   btn.disabled = true;
@@ -840,6 +852,19 @@ async function loadDEList(mode) {
     );
     const text = await resp.text();
     const doc  = new DOMParser().parseFromString(text, 'text/xml');
+
+    const overallStatus = doc.querySelector('OverallStatus')?.textContent || '';
+    if (overallStatus.toLowerCase().includes('permission')) {
+      btn.textContent = '권한 없음';
+      alert('SFMC Installed Package에 DataExtension Read 권한이 없습니다.\n\nSFMC → Setup → Apps → Installed Packages → [패키지 선택] → API Integration → Scope에서\n"Data > Data Extensions > Read" 권한을 추가하세요.');
+      return;
+    }
+    if (overallStatus && !overallStatus.toLowerCase().startsWith('ok') && overallStatus !== 'MoreDataAvailable') {
+      btn.textContent = '오류';
+      alert(`SOAP 오류: ${overallStatus}`);
+      return;
+    }
+
     sfmc.deList = Array.from(doc.querySelectorAll('Results')).map(r => ({
       name: r.querySelector('Name')?.textContent  || '',
       key:  r.querySelector('CustomerKey')?.textContent || '',
@@ -847,12 +872,12 @@ async function loadDEList(mode) {
     })).filter(d => d.name).sort((a, b) => a.name.localeCompare(b.name));
 
     btn.textContent = `${sfmc.deList.length}개 로드됨`;
-    // 양쪽 탭 버튼 동기화
     const other = mode === 'tsql' ? 'mysql' : 'tsql';
     document.getElementById(`${other}-de-list-btn`).textContent = `${sfmc.deList.length}개 로드됨`;
   } catch (err) {
     btn.textContent = '실패 — 재시도';
     console.error(err);
+    alert(`오류: ${err.message}`);
   } finally {
     btn.disabled = false;
   }
