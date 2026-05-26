@@ -29,6 +29,14 @@
 
 <!-- ══ T-SQL MODE ══ -->
 <div id="mode-tsql" class="mode-wrap">
+  <div class="action-bar">
+    <button class="btn btn-primary" id="tsql-btn-validate">검사하기</button>
+    <button class="btn btn-fix" id="tsql-btn-autofix">🔧 교정</button>
+    <div class="action-bar-sep"></div>
+    <button class="btn btn-secondary" id="tsql-btn-save">💾 저장</button>
+    <button class="btn btn-secondary" id="tsql-btn-load">📂 불러오기</button>
+    <button class="btn btn-ghost" id="tsql-btn-clear">지우기</button>
+  </div>
   <div class="main">
     <div class="editor-panel">
       <div class="snippet-bar">
@@ -44,13 +52,6 @@
         <div class="result-subtabs">
           <button class="tab-btn active" data-mode="tsql" data-tab="tsql-result">✅ 검사 결과</button>
           <button class="tab-btn" data-mode="tsql" data-tab="tsql-connect">🔗 초록우산 MC 연결</button>
-        </div>
-        <div class="result-actions">
-          <button class="btn btn-primary" id="tsql-btn-validate">검사하기</button>
-          <button class="btn btn-fix" id="tsql-btn-autofix">🔧 교정</button>
-          <button class="btn btn-secondary" id="tsql-btn-save">💾 저장</button>
-          <button class="btn btn-secondary" id="tsql-btn-load">📂 불러오기</button>
-          <button class="btn btn-secondary" id="tsql-btn-clear">지우기</button>
         </div>
       </div>
       <div class="result-inner">
@@ -100,15 +101,17 @@
               </div>
               <div id="tsql-de-result" style="margin-top:10px;"></div>
             </div>
-            <div class="cors-notice" style="margin-top:14px;">
-              <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 프록시 설정 방법</p>
-              <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
-              <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
+            <details class="cors-notice" style="margin-top:14px;">
+              <summary>⚠️ CORS 프록시 설정 방법</summary>
+              <div class="cors-body">
+                <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
+                <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
 1. workers.cloudflare.com → 무료 계정 생성<br>
 2. "Create a Worker" → worker.js 내용 붙여넣기<br>
 3. 배포 후 URL을 위의 "프록시 URL"에 입력
-              </code>
-            </div>
+                </code>
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -146,6 +149,14 @@
     </button>
   </div>
 
+  <div class="action-bar">
+    <button class="btn btn-primary" id="mysql-btn-validate">검사하기</button>
+    <button class="btn btn-fix" id="mysql-btn-autofix">🔧 교정</button>
+    <div class="action-bar-sep"></div>
+    <button class="btn btn-secondary" id="mysql-btn-save">💾 저장</button>
+    <button class="btn btn-secondary" id="mysql-btn-load">📂 불러오기</button>
+    <button class="btn btn-ghost" id="mysql-btn-clear">지우기</button>
+  </div>
   <div class="main">
     <!-- 좌측: 에디터 -->
     <div class="editor-panel">
@@ -166,13 +177,6 @@
         <div class="result-subtabs">
           <button class="tab-btn active" data-mode="mysql" data-tab="mysql-result">✅ 검사 결과</button>
           <button class="tab-btn" data-mode="mysql" data-tab="mysql-connect">🔗 초록우산 MC 연결</button>
-        </div>
-        <div class="result-actions">
-          <button class="btn btn-primary" id="mysql-btn-validate">검사하기</button>
-          <button class="btn btn-fix" id="mysql-btn-autofix">🔧 교정</button>
-          <button class="btn btn-secondary" id="mysql-btn-save">💾 저장</button>
-          <button class="btn btn-secondary" id="mysql-btn-load">📂 불러오기</button>
-          <button class="btn btn-secondary" id="mysql-btn-clear">지우기</button>
         </div>
       </div>
       <div class="result-inner">
@@ -222,15 +226,17 @@
               </div>
               <div id="mysql-de-result" style="margin-top:10px;"></div>
             </div>
-            <div class="cors-notice" style="margin-top:14px;">
-              <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 프록시 설정 방법</p>
-              <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
-              <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
+            <details class="cors-notice" style="margin-top:14px;">
+              <summary>⚠️ CORS 프록시 설정 방법</summary>
+              <div class="cors-body">
+                <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
+                <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
 1. workers.cloudflare.com → 무료 계정 생성<br>
 2. "Create a Worker" → worker.js 내용 붙여넣기<br>
 3. 배포 후 URL을 위의 "프록시 URL"에 입력
-              </code>
-            </div>
+                </code>
+              </div>
+            </details>
           </div>
         </div>
       </div>
