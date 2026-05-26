@@ -132,7 +132,7 @@ function autoFix(sql) {
 
   // DATE_ADD(date, INTERVAL n UNIT) → DATEADD(UNIT, n, date)
   fixed = fixed.replace(
-    /\bDATE_ADD\s*\(\s*([^,]+?)\s*,\s*INTERVAL\s+(\d+)\s+(DAY|MONTH|YEAR|HOUR|MINUTE)\s*\)/gi,
+    /\bDATE_ADD\s*\(\s*([^,]+?)\s*,\s*INTERVAL\s+(-?\d+)\s+(DAY|MONTH|YEAR|HOUR|MINUTE)\s*\)/gi,
     (_, date, n, unit) => `DATEADD(${unit.toUpperCase()}, ${n}, ${date.trim()})`
   );
 
@@ -142,7 +142,7 @@ function autoFix(sql) {
     (_, date, n, unit) => `DATEADD(${unit.toUpperCase()}, -${n}, ${date.trim()})`
   );
 
-  // LIMIT N → SELECT TOP N (LIMIT 제거 후 SELECT 뒤에 TOP N 삽입)
+  // LIMIT N → SELECT TOP N
   const limitMatch = fixed.match(/\bLIMIT\s+(\d+)/i);
   if (limitMatch) {
     const n = limitMatch[1];
@@ -151,6 +151,19 @@ function autoFix(sql) {
       fixed = fixed.replace(/\bSELECT\b/i, `SELECT TOP ${n}`);
     }
   }
+
+  // GROUP_CONCAT(col, sep) → STRING_AGG(col, sep)
+  fixed = fixed.replace(
+    /\bGROUP_CONCAT\s*\(\s*([^,)]+?)\s*(?:SEPARATOR\s*('(?:[^']|'')*'|"[^"]*"))?\s*\)/gi,
+    (_, col, sep) => `STRING_AGG(${col.trim()}, ${sep ? sep : "','})`
+  );
+
+  // CHAR_LENGTH / LENGTH → LEN
+  fixed = fixed.replace(/\bCHAR_LENGTH\s*\(/gi, 'LEN(');
+  fixed = fixed.replace(/\bLENGTH\s*\(/gi, 'LEN(');
+
+  // LOCATE(substr, str) → CHARINDEX(substr, str)
+  fixed = fixed.replace(/\bLOCATE\s*\(/gi, 'CHARINDEX(');
 
   return fixed;
 }

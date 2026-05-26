@@ -746,6 +746,39 @@ function autoFixMySQL(sql) {
   fixed = fixed.replace(/\bGETDATE\s*\(\s*\)/gi, 'NOW()');
   fixed = fixed.replace(/\bISNULL\s*\(/gi, 'IFNULL(');
 
+  // DATEADD(unit, n, date) → DATE_ADD(date, INTERVAL n unit)
+  fixed = fixed.replace(
+    /\bDATEADD\s*\(\s*(DAY|MONTH|YEAR|HOUR|MINUTE)\s*,\s*(-?\d+)\s*,\s*([^)]+?)\s*\)/gi,
+    (_, unit, n, date) => {
+      const interval = parseInt(n, 10) < 0
+        ? `DATE_SUB(${date.trim()}, INTERVAL ${Math.abs(parseInt(n, 10))} ${unit.toUpperCase()})`
+        : `DATE_ADD(${date.trim()}, INTERVAL ${n} ${unit.toUpperCase()})`;
+      return interval;
+    }
+  );
+
+  // SELECT TOP N → LIMIT N (TOP 제거 후 쿼리 끝에 LIMIT 추가)
+  const topMatch = fixed.match(/\bSELECT\s+TOP\s+(\d+)\b/i);
+  if (topMatch) {
+    const n = topMatch[1];
+    fixed = fixed.replace(/\bSELECT\s+TOP\s+\d+\b/i, 'SELECT');
+    if (!/\bLIMIT\s+\d+/i.test(fixed)) {
+      fixed = fixed.trimEnd() + `\nLIMIT ${n}`;
+    }
+  }
+
+  // STRING_AGG(col, sep) → GROUP_CONCAT(col SEPARATOR sep)
+  fixed = fixed.replace(
+    /\bSTRING_AGG\s*\(\s*([^,)]+?)\s*,\s*('(?:[^']|'')*'|"[^"]*")\s*\)/gi,
+    (_, col, sep) => `GROUP_CONCAT(${col.trim()} SEPARATOR ${sep})`
+  );
+
+  // LEN() → CHAR_LENGTH()
+  fixed = fixed.replace(/\bLEN\s*\(/gi, 'CHAR_LENGTH(');
+
+  // CHARINDEX(substr, str) → LOCATE(substr, str)
+  fixed = fixed.replace(/\bCHARINDEX\s*\(/gi, 'LOCATE(');
+
   // [bracket 식별자] → `backtick` (Journey [[변수]] 제외)
   fixed = fixed.replace(/(?<!\[)\[([^\[\]]+)\](?!\])/g, '`$1`');
 
