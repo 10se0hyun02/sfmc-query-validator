@@ -93,19 +93,37 @@
 
 <!-- ══ MySQL MODE ══ -->
 <div id="mode-mysql" class="mode-wrap" style="display:none">
-  <div class="tabs">
-    <button class="tab-btn active" data-mode="mysql" data-tab="mysql-result">✅ 검사 결과</button>
-    <button class="tab-btn" data-mode="mysql" data-tab="mysql-connect">🔗 SFMC 연결</button>
+  <!-- 테이블 탭 (상단 전체 너비) -->
+  <div class="table-tabs">
+    <button class="table-tab active" data-t="ss_hist">
+      <span class="table-tab-name">SS_HIST</span>
+      <small>SS_SERVICE_ACTION_HIST</small>
+    </button>
+    <button class="table-tab" data-t="ss_hist_dtl">
+      <span class="table-tab-name">SS_HIST_DTL</span>
+      <small>SS_SERVICE_ACTION_HIST_DTL</small>
+    </button>
+    <button class="table-tab" data-t="ca_mail">
+      <span class="table-tab-name">CA_MAIL</span>
+      <small>CA_MAIL_LIST</small>
+    </button>
+    <button class="table-tab" data-t="ca_sms">
+      <span class="table-tab-name">CA_SMS</span>
+      <small>CA_SMS_LIST</small>
+    </button>
+    <button class="table-tab" data-t="ca_cmc_target">
+      <span class="table-tab-name">CA_CMC_TGT</span>
+      <small>CA_CMC_TARGET_LIST</small>
+    </button>
+    <button class="table-tab" data-t="ca_cmc_camp">
+      <span class="table-tab-name">CA_CMC_CMP</span>
+      <small>CA_CMC_CAMPAIGN</small>
+    </button>
   </div>
+
   <div class="main">
+    <!-- 좌측: 에디터 -->
     <div class="editor-panel">
-      <div class="editor-toolbar">
-        <button class="btn btn-primary" id="mysql-btn-validate">검사하기</button>
-        <div class="toolbar-sep"></div>
-        <button class="btn btn-secondary" id="mysql-btn-save">💾 저장</button>
-        <button class="btn btn-secondary" id="mysql-btn-load">📂 불러오기</button>
-        <button class="btn btn-secondary" id="mysql-btn-clear">지우기</button>
-      </div>
       <div class="snippet-bar">
         <span class="snippet-label">삽입:</span>
         <button class="snippet-btn" data-e="mysql" data-k="now">NOW()</button>
@@ -114,23 +132,28 @@
         <button class="snippet-btn" data-e="mysql" data-k="datediff">DATEDIFF</button>
         <button class="snippet-btn" data-e="mysql" data-k="var">[[변수]]</button>
       </div>
-      <div class="table-preset-bar">
-        <span class="snippet-label">테이블:</span>
-        <button class="table-preset-btn" data-t="ss_hist"       title="INTRA.SS_SERVICE_ACTION_HIST">SS_HIST</button>
-        <button class="table-preset-btn" data-t="ss_hist_dtl"   title="INTRA.SS_SERVICE_ACTION_HIST_DTL">SS_HIST_DTL</button>
-        <button class="table-preset-btn" data-t="ca_mail"       title="INTRA.CA_MAIL_LIST">CA_MAIL</button>
-        <button class="table-preset-btn" data-t="ca_sms"        title="INTRA.CA_SMS_LIST">CA_SMS</button>
-        <button class="table-preset-btn" data-t="ca_cmc_target" title="INTRA.CA_CMC_TARGET_LIST">CA_CMC_TGT</button>
-        <button class="table-preset-btn" data-t="ca_cmc_camp"   title="INTRA.CA_CMC_CAMPAIGN">CA_CMC_CMP</button>
-      </div>
       <div id="mysql-editor-container"></div>
     </div>
+
+    <!-- 우측: 탭 + 액션 버튼 + 결과 -->
     <div class="result-panel">
+      <div class="result-header">
+        <div class="result-subtabs">
+          <button class="tab-btn active" data-mode="mysql" data-tab="mysql-result">✅ 검사 결과</button>
+          <button class="tab-btn" data-mode="mysql" data-tab="mysql-connect">🔗 SFMC 연결</button>
+        </div>
+        <div class="result-actions">
+          <button class="btn btn-primary" id="mysql-btn-validate">검사하기</button>
+          <button class="btn btn-secondary" id="mysql-btn-save">💾 저장</button>
+          <button class="btn btn-secondary" id="mysql-btn-load">📂 불러오기</button>
+          <button class="btn btn-secondary" id="mysql-btn-clear">지우기</button>
+        </div>
+      </div>
       <div class="result-inner">
         <div id="mysql-result">
           <div class="empty-state">
             <div class="icon">📝</div>
-            <div>MySQL 쿼리를 입력하고 <strong>검사하기</strong>를 클릭하세요</div>
+            <div>테이블을 선택하고 <strong>검사하기</strong>를 클릭하세요</div>
           </div>
         </div>
         <div id="mysql-connect" style="display:none">
@@ -438,7 +461,7 @@ require(['vs/editor/editor.main'], function () {
 
   mysqlEditor = monaco.editor.create(document.getElementById('mysql-editor-container'), {
     ...base,
-    value: "-- Journey Custom Activity MySQL 예시\nINSERT INTO `customer_log` (contact_key, email, action_date)\nVALUES ('[[ContactKey]]', '[[EmailAddress]]', NOW());",
+    value: TABLE_PRESETS.ss_hist,
   });
 
   setTimeout(fixStringColor, 400);
@@ -580,13 +603,13 @@ document.querySelectorAll('.snippet-btn').forEach(btn => {
   });
 });
 
-document.querySelectorAll('.table-preset-btn').forEach(btn => {
+document.querySelectorAll('.table-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     const query = TABLE_PRESETS[btn.dataset.t];
     if (!query || !mysqlEditor) return;
     mysqlEditor.setValue(query);
     mysqlEditor.focus();
-    document.querySelectorAll('.table-preset-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.table-tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   });
 });

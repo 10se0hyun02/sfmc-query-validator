@@ -327,32 +327,72 @@ tr:last-child td { border-bottom: none; }
 /* Toolbar separator */
 .toolbar-sep { width: 1px; background: var(--border); height: 20px; margin: 0 4px; }
 
-/* Table preset bar */
-.table-preset-bar {
-  background: #18182e;
-  border-bottom: 1px solid var(--border);
-  padding: 5px 12px;
+/* Table tabs — prominent full-width tab bar */
+.table-tabs {
   display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
+  background: #16162a;
+  border-bottom: 2px solid var(--border);
+  overflow-x: auto;
   flex-shrink: 0;
 }
-body.light .table-preset-bar { background: #e0e8f4; }
-.table-preset-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
-  padding: 3px 9px;
+body.light .table-tabs { background: #dce6f5; }
+.table-tabs::-webkit-scrollbar { height: 3px; }
+
+.table-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
   cursor: pointer;
+  color: var(--text-muted);
   transition: all 0.15s;
+  white-space: nowrap;
+  gap: 2px;
 }
-.table-preset-btn:hover { border-color: var(--accent); color: var(--accent); }
-.table-preset-btn.active { background: var(--accent); color: #1e1e2e; border-color: var(--accent); font-weight: 600; }
-body.light .table-preset-btn.active { color: #ffffff; }
+.table-tab:hover:not(.active) { background: rgba(137,180,250,0.06); color: var(--text); }
+.table-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: rgba(137,180,250,0.08);
+}
+.table-tab-name {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  letter-spacing: 0.03em;
+}
+.table-tab small {
+  font-size: 10px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  opacity: 0.6;
+}
+.table-tab.active .table-tab-name { color: var(--accent); }
+.table-tab.active small { opacity: 0.9; }
+
+/* Result panel header — sub-tabs + action buttons */
+.result-header {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  padding-right: 10px;
+  gap: 4px;
+}
+.result-subtabs {
+  display: flex;
+  flex: 1;
+}
+.result-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-shrink: 0;
+}
 
 /* Auto-fix button */
 .btn-fix { background: #313149; color: var(--warning); border: 1px solid var(--warning); }
