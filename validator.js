@@ -29,14 +29,6 @@ const SFMC_RULES = [
     suggestion: '임시 결과는 별도 Data Extension에 저장하세요.',
     check: (sql) => /#\w+/.test(sql),
   },
-  {
-    id: 'missing-top',
-    type: 'warning',
-    message: 'SELECT TOP N 이 없습니다.',
-    suggestion: 'SFMC Query Activity는 TOP N으로 결과 행 수를 제한하는 것을 권장합니다.\n최대 2,000,000행까지 허용되며 미지정 시 성능 문제가 생길 수 있습니다.\n예) SELECT TOP 1000\n    c.ContactKey, c.Email\nINTO [Result_DE]\nFROM [Contact_DE] c',
-    check: (sql) => /^\s*SELECT\b/i.test(sql) && !/\bSELECT\s+TOP\s+\d+/i.test(sql),
-  },
-
   // ── 잘못된 구문 ─────────────────────────────────────────────────
   {
     id: 'select-top-comma',
