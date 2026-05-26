@@ -380,10 +380,32 @@ function autoFix(sql) {
   let fixed = sql;
   const changes = [];
 
+  function annotate(line, label) {
+    if (!line.trim() || line.trim().startsWith('--')) return line;
+    const m = line.match(/^([\s\S]*?)\s*-- \[수정\] (.+)$/);
+    if (m) return `${m[1]} -- [수정] ${m[2]}, ${label}`;
+    return `${line} -- [수정] ${label}`;
+  }
+
   function apply(label, fn) {
-    const before = fixed;
+    const beforeLines = fixed.split('\n');
     fn();
-    if (fixed !== before) changes.push(label);
+    const afterLines = fixed.split('\n');
+    if (afterLines.join('\n') === beforeLines.join('\n')) return;
+    changes.push(label);
+
+    if (beforeLines.length === afterLines.length) {
+      fixed = afterLines.map((line, i) =>
+        line !== beforeLines[i] ? annotate(line, label) : line
+      ).join('\n');
+    } else {
+      const result = [...afterLines];
+      const minLen = Math.min(beforeLines.length, afterLines.length);
+      for (let i = 0; i < minLen; i++) {
+        if (result[i] !== beforeLines[i]) { result[i] = annotate(result[i], label); break; }
+      }
+      fixed = result.join('\n');
+    }
   }
 
   apply('SELECT TOP N, 콤마 제거', () => {
@@ -469,10 +491,6 @@ function autoFix(sql) {
   apply('말미 세미콜론 제거', () => {
     fixed = fixed.replace(/\s*;\s*$/, '');
   });
-
-  if (changes.length > 0) {
-    fixed = '-- [자동교정] ' + changes.join(' | ') + '\n' + fixed;
-  }
 
   return fixed;
 }
