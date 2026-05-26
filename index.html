@@ -170,6 +170,20 @@ const themeBtn  = document.getElementById('btn-theme');
 const themeIcon = document.getElementById('theme-icon');
 let isLight = localStorage.getItem('sfmc_theme') === 'light';
 
+function fixStringColor() {
+  if (document.body.classList.contains('light')) return;
+  for (const sheet of document.styleSheets) {
+    try {
+      for (const rule of sheet.cssRules) {
+        if (rule.selectorText && rule.selectorText.includes('mtk') &&
+            rule.style && rule.style.color === 'rgb(206, 145, 120)') {
+          rule.style.setProperty('color', '#98c379', 'important');
+        }
+      }
+    } catch(e) {}
+  }
+}
+
 function applyTheme() {
   if (isLight) {
     document.body.classList.add('light');
@@ -178,7 +192,10 @@ function applyTheme() {
   } else {
     document.body.classList.remove('light');
     themeIcon.textContent = '☀️';
-    if (typeof monaco !== 'undefined') monaco.editor.setTheme('custom-dark');
+    if (typeof monaco !== 'undefined') {
+      monaco.editor.setTheme('custom-dark');
+      setTimeout(fixStringColor, 200);
+    }
   }
   localStorage.setItem('sfmc_theme', isLight ? 'light' : 'dark');
 }
@@ -236,6 +253,8 @@ require(['vs/editor/editor.main'], function () {
     padding: { top: 12 },
     suggestOnTriggerCharacters: true,
   });
+
+  setTimeout(fixStringColor, 400);
 
   // SFMC 함수 자동완성 등록
   monaco.languages.registerCompletionItemProvider('sql', {
