@@ -389,9 +389,15 @@ body.light .table-tabs { background: #dce6f5; }
 }
 .result-actions {
   display: flex;
-  gap: 5px;
+  gap: 4px;
   align-items: center;
   flex-shrink: 0;
+  padding-right: 10px;
+}
+.result-actions .btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 /* Auto-fix button */
