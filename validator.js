@@ -124,7 +124,7 @@ const SFMC_RULES = [
         if (!line || line.startsWith('--')) continue;
         if (/^SELECT\b/i.test(line)) {
           inSelect = true;
-          const after = line.replace(/^SELECT\s+(TOP\s+\d+\s*|DISTINCT\s+)?/i, '').trim();
+          const after = line.replace(/^SELECT\s*(TOP\s+\d+\s*|DISTINCT\s+)?/i, '').trim();
           if (after) colLines.push(after);
           continue;
         }
