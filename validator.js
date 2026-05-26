@@ -68,6 +68,13 @@ const SFMC_RULES = [
     },
   },
   {
+    id: 'select-top-comma',
+    pattern: /\bSELECT\s+TOP\s+\d+\s*,/i,
+    type: 'error',
+    message: 'SELECT TOP N 뒤에 콤마(,)가 있습니다.',
+    suggestion: 'TOP N 다음에는 바로 컬럼명이 와야 합니다.\n예) SELECT TOP 1000\n    c.ContactKey,\n    c.Email',
+  },
+  {
     id: 'select-star',
     pattern: /SELECT\s+\*/i,
     type: 'warning',
@@ -194,6 +201,9 @@ function mysqlToTsqlFmt(fmt) {
 function autoFix(sql) {
   if (!sql || !sql.trim()) return sql;
   let fixed = sql;
+
+  // SELECT TOP N, → SELECT TOP N (콤마 제거)
+  fixed = fixed.replace(/(\bSELECT\s+TOP\s+\d+)\s*,/gi, '$1');
 
   // 백틱 → 대괄호
   fixed = fixed.replace(/`([^`]+)`/g, '[$1]');
