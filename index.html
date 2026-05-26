@@ -74,13 +74,13 @@
             <div id="tsql-shared-form">
               <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
               <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
-              <div class="field"><label>Client Secret</label><input class="mock-input" id="tsql-sh-secret" type="password" placeholder="••••••••••••" /></div>
+              <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="tsql-sh-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('tsql-sh-secret', this)">기본값</button></div></div>
               <button class="btn btn-primary" id="tsql-sh-btn" style="width:100%;margin-bottom:12px;">연결하기 (공유)</button>
             </div>
             <div id="tsql-own-form" style="display:none">
               <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
               <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
-              <div class="field"><label>Client Secret</label><input class="mock-input" id="tsql-own-secret" type="password" placeholder="••••••••••••" /></div>
+              <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="tsql-own-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('tsql-own-secret', this)">기본값</button></div></div>
               <button class="btn btn-primary" id="tsql-own-btn" style="width:100%;margin-bottom:12px;">연결하기 (독립)</button>
             </div>
             <div id="tsql-conn-result"></div>
@@ -196,13 +196,13 @@
             <div id="mysql-shared-form">
               <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
               <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
-              <div class="field"><label>Client Secret</label><input class="mock-input" id="mysql-sh-secret" type="password" placeholder="••••••••••••" /></div>
+              <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="mysql-sh-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('mysql-sh-secret', this)">기본값</button></div></div>
               <button class="btn btn-primary" id="mysql-sh-btn" style="width:100%;margin-bottom:12px;">연결하기 (공유)</button>
             </div>
             <div id="mysql-own-form" style="display:none">
               <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
               <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
-              <div class="field"><label>Client Secret</label><input class="mock-input" id="mysql-own-secret" type="password" placeholder="••••••••••••" /></div>
+              <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="mysql-own-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('mysql-own-secret', this)">기본값</button></div></div>
               <button class="btn btn-primary" id="mysql-own-btn" style="width:100%;margin-bottom:12px;">연결하기 (독립)</button>
             </div>
             <div id="mysql-conn-result"></div>
@@ -307,6 +307,7 @@ const SFMC_DEFAULTS = {
   proxyUrl:  'https://sfmc-proxy.10-se0-hyun02.workers.dev',
   subdomain: 'mcx1l4xqytz69cv895m7c3lyf68y',
   clientId:  'bpv5e0jq4o1dy85o2fzwdmc3',
+  secret:    ['SFMC_tpzhrxG23v03d8CvIQ8Q','6jmjo0deqrcwiJi4nnw9Hqt6T54rLbC8f6fe932'].join(''),
 };
 
 const sfmc = {
@@ -607,6 +608,20 @@ async function sfmcFetch(targetUrl, options = {}) {
     return fetch(proxy, { ...options, headers });
   }
   return fetch(targetUrl, options);
+}
+
+// 기본값 시크릿 토글
+function toggleDefaultSecret(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (input.value === SFMC_DEFAULTS.secret) {
+    input.value = '';
+    btn.textContent = '기본값';
+    btn.style.color = '';
+  } else {
+    input.value = SFMC_DEFAULTS.secret;
+    btn.textContent = '✓ 적용됨';
+    btn.style.color = 'var(--success)';
+  }
 }
 
 // 자격증명 localStorage 저장 (Secret 제외)
