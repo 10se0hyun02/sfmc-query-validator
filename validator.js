@@ -102,12 +102,13 @@ const SFMC_RULES = [
         if (!line || line.startsWith('--')) continue;
         if (/^SELECT\b/i.test(line)) {
           inSelect = true;
-          const after = line.replace(/^SELECT\s+(TOP\s+\d+\s+|DISTINCT\s+)?/i, '').trim();
+          const after = line.replace(/^SELECT\s+(TOP\s+\d+\s*|DISTINCT\s+)?/i, '').trim();
           if (after) colLines.push(after);
           continue;
         }
         if (inSelect) {
           if (/^(FROM|INTO|WHERE|GROUP|HAVING|ORDER)\b/i.test(line)) break;
+          if (/^TOP\s+\d+\s*$/i.test(line)) continue; // SELECT 다음 줄에 TOP N만 있는 경우
           colLines.push(line);
         }
       }
