@@ -45,12 +45,9 @@
       </div>
       <div class="snippet-bar">
         <span class="snippet-label">삽입:</span>
+        <button class="snippet-btn" data-e="tsql" data-k="cast">CAST</button>
+        <button class="snippet-btn" data-e="tsql" data-k="newid">RANDOM</button>
         <button class="snippet-btn" data-e="tsql" data-k="getdate">GETDATE()</button>
-        <button class="snippet-btn" data-e="tsql" data-k="dateadd">DATEADD</button>
-        <button class="snippet-btn" data-e="tsql" data-k="datediff">DATEDIFF</button>
-        <button class="snippet-btn" data-e="tsql" data-k="isnull">ISNULL</button>
-        <button class="snippet-btn" data-e="tsql" data-k="selecttop">SELECT TOP</button>
-        <button class="snippet-btn" data-e="tsql" data-k="minus30">-30일</button>
       </div>
       <div id="tsql-editor-container"></div>
     </div>
@@ -234,12 +231,9 @@ const sfmc = {
 // ── Snippets ─────────────────────────────────────────────────────
 const SNIPPETS = {
   tsql: {
-    getdate:  'GETDATE()',
-    dateadd:  'DATEADD(DAY, -30, GETDATE())',
-    datediff: 'DATEDIFF(DAY, StartDate, GETDATE())',
-    isnull:   "ISNULL(col, '')",
-    selecttop:'SELECT TOP 1000\n\nINTO [Result_DE]\nFROM ',
-    minus30:  'DATEADD(DAY, -30, GETDATE())',
+    cast:    'CAST(col AS VARCHAR(100))',
+    newid:   'ABS(CHECKSUM(NEWID())) % 100',
+    getdate: 'GETDATE()',
   },
   mysql: {
     now:     'NOW()',
