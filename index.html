@@ -775,80 +775,86 @@ function oracleToMysqlFmt(fmt) {
 function autoFixMySQL(sql) {
   if (!sql || !sql.trim()) return sql;
   let fixed = sql;
+  const changes = [];
 
-  // Oracle SYSDATE → NOW()
-  fixed = fixed.replace(/\bSYSDATE\b/gi, 'NOW()');
-
-  // T-SQL GETDATE() → NOW()
-  fixed = fixed.replace(/\bGETDATE\s*\(\s*\)/gi, 'NOW()');
-
-  // Oracle NVL → IFNULL
-  fixed = fixed.replace(/\bNVL\s*\(/gi, 'IFNULL(');
-
-  // T-SQL ISNULL → IFNULL
-  fixed = fixed.replace(/\bISNULL\s*\(/gi, 'IFNULL(');
-
-  // Oracle TO_CHAR(date, 'fmt') → DATE_FORMAT(date, '%fmt')
-  fixed = fixed.replace(
-    /\bTO_CHAR\s*\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)/gi,
-    (_, expr, fmt) => `DATE_FORMAT(${expr.trim()}, '${oracleToMysqlFmt(fmt)}')`
-  );
-
-  // DATEADD(unit, n, date) → DATE_ADD/SUB
-  fixed = fixed.replace(
-    /\bDATEADD\s*\(\s*(DAY|MONTH|YEAR|HOUR|MINUTE)\s*,\s*(-?\d+)\s*,\s*([^)]+?)\s*\)/gi,
-    (_, unit, n, date) => parseInt(n, 10) < 0
-      ? `DATE_SUB(${date.trim()}, INTERVAL ${Math.abs(parseInt(n,10))} ${unit.toUpperCase()})`
-      : `DATE_ADD(${date.trim()}, INTERVAL ${n} ${unit.toUpperCase()})`
-  );
-
-  // SELECT TOP N → LIMIT N
-  const topMatch = fixed.match(/\bSELECT\s+TOP\s+(\d+)\b/i);
-  if (topMatch) {
-    const n = topMatch[1];
-    fixed = fixed.replace(/\bSELECT\s+TOP\s+\d+\b/i, 'SELECT');
-    if (!/\bLIMIT\s+\d+/i.test(fixed)) fixed = fixed.trimEnd() + `\nLIMIT ${n}`;
+  function apply(label, fn) {
+    const before = fixed;
+    fn();
+    if (fixed !== before) changes.push(label);
   }
 
-  // STRING_AGG → GROUP_CONCAT
-  fixed = fixed.replace(
-    /\bSTRING_AGG\s*\(\s*([^,)]+?)\s*,\s*('(?:[^']|'')*'|"[^"]*")\s*\)/gi,
-    (_, col, sep) => `GROUP_CONCAT(${col.trim()} SEPARATOR ${sep})`
-  );
+  apply('SYSDATE → NOW()', () => {
+    fixed = fixed.replace(/\bSYSDATE\b/gi, 'NOW()');
+  });
+  apply('GETDATE() → NOW()', () => {
+    fixed = fixed.replace(/\bGETDATE\s*\(\s*\)/gi, 'NOW()');
+  });
+  apply('NVL() → IFNULL()', () => {
+    fixed = fixed.replace(/\bNVL\s*\(/gi, 'IFNULL(');
+  });
+  apply('ISNULL() → IFNULL()', () => {
+    fixed = fixed.replace(/\bISNULL\s*\(/gi, 'IFNULL(');
+  });
+  apply('TO_CHAR() → DATE_FORMAT()', () => {
+    fixed = fixed.replace(
+      /\bTO_CHAR\s*\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)/gi,
+      (_, expr, fmt) => `DATE_FORMAT(${expr.trim()}, '${oracleToMysqlFmt(fmt)}')`
+    );
+  });
+  apply('DATEADD() → DATE_ADD/SUB()', () => {
+    fixed = fixed.replace(
+      /\bDATEADD\s*\(\s*(DAY|MONTH|YEAR|HOUR|MINUTE)\s*,\s*(-?\d+)\s*,\s*([^)]+?)\s*\)/gi,
+      (_, unit, n, date) => parseInt(n, 10) < 0
+        ? `DATE_SUB(${date.trim()}, INTERVAL ${Math.abs(parseInt(n,10))} ${unit.toUpperCase()})`
+        : `DATE_ADD(${date.trim()}, INTERVAL ${n} ${unit.toUpperCase()})`
+    );
+  });
+  apply('SELECT TOP N → LIMIT N', () => {
+    const topMatch = fixed.match(/\bSELECT\s+TOP\s+(\d+)\b/i);
+    if (topMatch) {
+      const n = topMatch[1];
+      fixed = fixed.replace(/\bSELECT\s+TOP\s+\d+\b/i, 'SELECT');
+      if (!/\bLIMIT\s+\d+/i.test(fixed)) fixed = fixed.trimEnd() + `\nLIMIT ${n}`;
+    }
+  });
+  apply('STRING_AGG() → GROUP_CONCAT()', () => {
+    fixed = fixed.replace(
+      /\bSTRING_AGG\s*\(\s*([^,)]+?)\s*,\s*('(?:[^']|'')*'|"[^"]*")\s*\)/gi,
+      (_, col, sep) => `GROUP_CONCAT(${col.trim()} SEPARATOR ${sep})`
+    );
+  });
+  apply('LEN() → CHAR_LENGTH()', () => {
+    fixed = fixed.replace(/\bLEN\s*\(/gi, 'CHAR_LENGTH(');
+  });
+  apply('CHARINDEX() → LOCATE()', () => {
+    fixed = fixed.replace(/\bCHARINDEX\s*\(/gi, 'LOCATE(');
+  });
+  apply('SUBSTR() → SUBSTRING()', () => {
+    fixed = fixed.replace(/\bSUBSTR\s*\(/gi, 'SUBSTRING(');
+  });
+  apply('LTRIM(RTRIM()) → TRIM()', () => {
+    fixed = fixed.replace(/\bLTRIM\s*\(\s*RTRIM\s*\(\s*([^)]+)\s*\)\s*\)/gi, (_, x) => `TRIM(${x.trim()})`);
+    fixed = fixed.replace(/\bRTRIM\s*\(\s*LTRIM\s*\(\s*([^)]+)\s*\)\s*\)/gi, (_, x) => `TRIM(${x.trim()})`);
+  });
+  apply('[대괄호] → `백틱`', () => {
+    fixed = fixed.replace(/(?<!\[)\[([^\[\]]+)\](?!\])/g, '`$1`');
+  });
+  apply('<> → !=', () => {
+    fixed = fixed.replace(/\s*<>\s*/g, ' != ');
+  });
+  apply('trailing 콤마 제거', () => {
+    fixed = fixed.replace(/,(\s*\n\s*\))/g, '$1');
+  });
+  apply('말미 세미콜론 추가', () => {
+    if (!/;\s*$/.test(fixed.trim())) fixed = fixed.trimEnd() + ';';
+  });
+  apply("작은따옴표 이스케이프 교정", () => {
+    fixed = escapeInlineQuotes(fixed);
+  });
 
-  // LEN() → CHAR_LENGTH()
-  fixed = fixed.replace(/\bLEN\s*\(/gi, 'CHAR_LENGTH(');
-
-  // CHARINDEX → LOCATE
-  fixed = fixed.replace(/\bCHARINDEX\s*\(/gi, 'LOCATE(');
-
-  // SUBSTR → SUBSTRING (MySQL 권장)
-  fixed = fixed.replace(/\bSUBSTR\s*\(/gi, 'SUBSTRING(');
-
-  // MOD(a, b) → MOD(a, b) 유지 (MySQL 지원), 단 % 연산자 → MOD()
-  // (% 연산자는 MySQL에서 지원하므로 변환 불필요)
-
-  // LTRIM(RTRIM(x)) / RTRIM(LTRIM(x)) → TRIM(x)
-  fixed = fixed.replace(/\bLTRIM\s*\(\s*RTRIM\s*\(\s*([^)]+)\s*\)\s*\)/gi, (_, x) => `TRIM(${x.trim()})`);
-  fixed = fixed.replace(/\bRTRIM\s*\(\s*LTRIM\s*\(\s*([^)]+)\s*\)\s*\)/gi, (_, x) => `TRIM(${x.trim()})`);
-
-  // FORMAT(date, 'tsqlfmt') → DATE_FORMAT(date, '%mysqlfmt')
-  // (T-SQL FORMAT 함수가 섞여 있을 경우 경고 수준 — 자동변환은 오류 가능성 있어 생략)
-
-  // [bracket 식별자] → `backtick` (Journey [[변수]] 제외)
-  fixed = fixed.replace(/(?<!\[)\[([^\[\]]+)\](?!\])/g, '`$1`');
-
-  // <> → != (MySQL 권장 표기)
-  fixed = fixed.replace(/\s*<>\s*/g, ' != ');
-
-  // 닫는 괄호 앞 trailing comma 제거
-  fixed = fixed.replace(/,(\s*\n\s*\))/g, '$1');
-
-  // 말미 세미콜론 없으면 추가
-  if (!/;\s*$/.test(fixed.trim())) fixed = fixed.trimEnd() + ';';
-
-  // 문자열 내 미이스케이프 작은따옴표 교정
-  fixed = escapeInlineQuotes(fixed);
+  if (changes.length > 0) {
+    fixed = '-- [자동교정] ' + changes.join(' | ') + '\n' + fixed;
+  }
 
   return fixed;
 }

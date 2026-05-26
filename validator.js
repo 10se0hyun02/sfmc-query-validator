@@ -201,89 +201,101 @@ function mysqlToTsqlFmt(fmt) {
 function autoFix(sql) {
   if (!sql || !sql.trim()) return sql;
   let fixed = sql;
+  const changes = [];
 
-  // SELECT TOP N, → SELECT TOP N (콤마 제거)
-  fixed = fixed.replace(/(\bSELECT\s+TOP\s+\d+)\s*,/gi, '$1');
-
-  // 백틱 → 대괄호
-  fixed = fixed.replace(/`([^`]+)`/g, '[$1]');
-
-  // Oracle SYSDATE → GETDATE()
-  fixed = fixed.replace(/\bSYSDATE\b/gi, 'GETDATE()');
-
-  // NOW() → GETDATE()
-  fixed = fixed.replace(/\bNOW\s*\(\s*\)/gi, 'GETDATE()');
-
-  // Oracle NVL → ISNULL
-  fixed = fixed.replace(/\bNVL\s*\(/gi, 'ISNULL(');
-
-  // IFNULL → ISNULL
-  fixed = fixed.replace(/\bIFNULL\s*\(/gi, 'ISNULL(');
-
-  // Oracle TO_CHAR(date, 'fmt') → FORMAT(date, 'tsqlfmt')
-  fixed = fixed.replace(
-    /\bTO_CHAR\s*\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)/gi,
-    (_, expr, fmt) => `FORMAT(${expr.trim()}, '${oracleToTsqlFmt(fmt)}')`
-  );
-
-  // MySQL DATE_FORMAT(date, '%fmt') → FORMAT(date, 'tsqlfmt')
-  fixed = fixed.replace(
-    /\bDATE_FORMAT\s*\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)/gi,
-    (_, expr, fmt) => `FORMAT(${expr.trim()}, '${mysqlToTsqlFmt(fmt)}')`
-  );
-
-  // DATE_ADD(date, INTERVAL n UNIT) → DATEADD(UNIT, n, date)
-  fixed = fixed.replace(
-    /\bDATE_ADD\s*\(\s*([^,]+?)\s*,\s*INTERVAL\s+(-?\d+)\s+(DAY|MONTH|YEAR|HOUR|MINUTE)\s*\)/gi,
-    (_, date, n, unit) => `DATEADD(${unit.toUpperCase()}, ${n}, ${date.trim()})`
-  );
-
-  // DATE_SUB(date, INTERVAL n UNIT) → DATEADD(UNIT, -n, date)
-  fixed = fixed.replace(
-    /\bDATE_SUB\s*\(\s*([^,]+?)\s*,\s*INTERVAL\s+(\d+)\s+(DAY|MONTH|YEAR|HOUR|MINUTE)\s*\)/gi,
-    (_, date, n, unit) => `DATEADD(${unit.toUpperCase()}, -${n}, ${date.trim()})`
-  );
-
-  // LIMIT N → SELECT TOP N
-  const limitMatch = fixed.match(/\bLIMIT\s+(\d+)/i);
-  if (limitMatch) {
-    const n = limitMatch[1];
-    fixed = fixed.replace(/\bLIMIT\s+\d+/i, '').trim();
-    if (!/\bSELECT\s+TOP\b/i.test(fixed)) {
-      fixed = fixed.replace(/\bSELECT\b/i, `SELECT TOP ${n}`);
-    }
+  function apply(label, fn) {
+    const before = fixed;
+    fn();
+    if (fixed !== before) changes.push(label);
   }
 
-  // GROUP_CONCAT → STRING_AGG
-  fixed = fixed.replace(
-    /\bGROUP_CONCAT\s*\(\s*([^,)]+?)\s*(?:SEPARATOR\s*('(?:[^']|'')*'|"[^"]*"))?\s*\)/gi,
-    (_, col, sep) => 'STRING_AGG(' + col.trim() + ', ' + (sep || "','") + ')'
-  );
+  apply('SELECT TOP N, 콤마 제거', () => {
+    fixed = fixed.replace(/(\bSELECT\s+TOP\s+\d+)\s*,/gi, '$1');
+  });
+  apply('백틱(`) → 대괄호([])', () => {
+    fixed = fixed.replace(/`([^`]+)`/g, '[$1]');
+  });
+  apply('SYSDATE → GETDATE()', () => {
+    fixed = fixed.replace(/\bSYSDATE\b/gi, 'GETDATE()');
+  });
+  apply('NOW() → GETDATE()', () => {
+    fixed = fixed.replace(/\bNOW\s*\(\s*\)/gi, 'GETDATE()');
+  });
+  apply('NVL() → ISNULL()', () => {
+    fixed = fixed.replace(/\bNVL\s*\(/gi, 'ISNULL(');
+  });
+  apply('IFNULL() → ISNULL()', () => {
+    fixed = fixed.replace(/\bIFNULL\s*\(/gi, 'ISNULL(');
+  });
+  apply('TO_CHAR() → FORMAT()', () => {
+    fixed = fixed.replace(
+      /\bTO_CHAR\s*\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)/gi,
+      (_, expr, fmt) => `FORMAT(${expr.trim()}, '${oracleToTsqlFmt(fmt)}')`
+    );
+  });
+  apply('DATE_FORMAT() → FORMAT()', () => {
+    fixed = fixed.replace(
+      /\bDATE_FORMAT\s*\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)/gi,
+      (_, expr, fmt) => `FORMAT(${expr.trim()}, '${mysqlToTsqlFmt(fmt)}')`
+    );
+  });
+  apply('DATE_ADD() → DATEADD()', () => {
+    fixed = fixed.replace(
+      /\bDATE_ADD\s*\(\s*([^,]+?)\s*,\s*INTERVAL\s+(-?\d+)\s+(DAY|MONTH|YEAR|HOUR|MINUTE)\s*\)/gi,
+      (_, date, n, unit) => `DATEADD(${unit.toUpperCase()}, ${n}, ${date.trim()})`
+    );
+  });
+  apply('DATE_SUB() → DATEADD()', () => {
+    fixed = fixed.replace(
+      /\bDATE_SUB\s*\(\s*([^,]+?)\s*,\s*INTERVAL\s+(\d+)\s+(DAY|MONTH|YEAR|HOUR|MINUTE)\s*\)/gi,
+      (_, date, n, unit) => `DATEADD(${unit.toUpperCase()}, -${n}, ${date.trim()})`
+    );
+  });
+  apply('LIMIT N → SELECT TOP N', () => {
+    const limitMatch = fixed.match(/\bLIMIT\s+(\d+)/i);
+    if (limitMatch) {
+      const n = limitMatch[1];
+      fixed = fixed.replace(/\bLIMIT\s+\d+/i, '').trim();
+      if (!/\bSELECT\s+TOP\b/i.test(fixed)) {
+        fixed = fixed.replace(/\bSELECT\b/i, `SELECT TOP ${n}`);
+      }
+    }
+  });
+  apply('GROUP_CONCAT() → STRING_AGG()', () => {
+    fixed = fixed.replace(
+      /\bGROUP_CONCAT\s*\(\s*([^,)]+?)\s*(?:SEPARATOR\s*('(?:[^']|'')*'|"[^"]*"))?\s*\)/gi,
+      (_, col, sep) => 'STRING_AGG(' + col.trim() + ', ' + (sep || "','") + ')'
+    );
+  });
+  apply('CHAR_LENGTH/LENGTH() → LEN()', () => {
+    fixed = fixed.replace(/\bCHAR_LENGTH\s*\(/gi, 'LEN(');
+    fixed = fixed.replace(/\bLENGTH\s*\(/gi, 'LEN(');
+  });
+  apply('LOCATE() → CHARINDEX()', () => {
+    fixed = fixed.replace(/\bLOCATE\s*\(/gi, 'CHARINDEX(');
+  });
+  apply('SUBSTR() → SUBSTRING()', () => {
+    fixed = fixed.replace(/\bSUBSTR\s*\(/gi, 'SUBSTRING(');
+  });
+  apply('TRIM() → LTRIM(RTRIM())', () => {
+    fixed = fixed.replace(/\bTRIM\s*\(\s*([^)]+)\s*\)/gi, (_, x) => `LTRIM(RTRIM(${x.trim()}))`);
+  });
+  apply('|| → + (문자열 연결)', () => {
+    fixed = fixed.replace(/\s*\|\|\s*/g, ' + ');
+  });
+  apply('# 주석 → -- 주석', () => {
+    fixed = fixed.replace(/^(\s*)#(.*)$/gm, '$1--$2');
+  });
+  apply('MOD() → % 연산자', () => {
+    fixed = fixed.replace(/\bMOD\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)/gi, (_, a, b) => `${a.trim()} % ${b.trim()}`);
+  });
+  apply('말미 세미콜론 제거', () => {
+    fixed = fixed.replace(/\s*;\s*$/, '');
+  });
 
-  // CHAR_LENGTH / LENGTH → LEN
-  fixed = fixed.replace(/\bCHAR_LENGTH\s*\(/gi, 'LEN(');
-  fixed = fixed.replace(/\bLENGTH\s*\(/gi, 'LEN(');
-
-  // LOCATE → CHARINDEX
-  fixed = fixed.replace(/\bLOCATE\s*\(/gi, 'CHARINDEX(');
-
-  // SUBSTR → SUBSTRING
-  fixed = fixed.replace(/\bSUBSTR\s*\(/gi, 'SUBSTRING(');
-
-  // TRIM(x) → LTRIM(RTRIM(x))
-  fixed = fixed.replace(/\bTRIM\s*\(\s*([^)]+)\s*\)/gi, (_, x) => `LTRIM(RTRIM(${x.trim()}))`);
-
-  // || → + (문자열 연결 연산자)
-  fixed = fixed.replace(/\s*\|\|\s*/g, ' + ');
-
-  // #주석 → -- 주석 (행 시작 기준)
-  fixed = fixed.replace(/^(\s*)#(.*)$/gm, '$1--$2');
-
-  // MOD(a, b) → a % b
-  fixed = fixed.replace(/\bMOD\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)/gi, (_, a, b) => `${a.trim()} % ${b.trim()}`);
-
-  // 말미 세미콜론 제거 (T-SQL Query Activity 불필요)
-  fixed = fixed.replace(/\s*;\s*$/, '');
+  if (changes.length > 0) {
+    fixed = '-- [자동교정] ' + changes.join(' | ') + '\n' + fixed;
+  }
 
   return fixed;
 }
