@@ -175,14 +175,22 @@ function fixStringColor() {
   for (const sheet of document.styleSheets) {
     try {
       for (const rule of sheet.cssRules) {
-        if (rule.selectorText && rule.selectorText.includes('mtk') &&
-            rule.style && rule.style.color === 'rgb(206, 145, 120)') {
+        if (!rule.selectorText || !rule.selectorText.includes('mtk')) continue;
+        const m = (rule.style.color || '').match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (!m) continue;
+        const [, r, g, b] = m.map(Number);
+        // 따뜻한 계열(빨강/주황/살구) 색상 범위를 초록으로 교체
+        if (r > 180 && g > 100 && g < 175 && b < 145 && r > b) {
           rule.style.setProperty('color', '#98c379', 'important');
         }
       }
     } catch(e) {}
   }
 }
+
+// Monaco가 스타일을 주입할 때마다 자동으로 색상 고정
+const _colorObserver = new MutationObserver(() => fixStringColor());
+_colorObserver.observe(document.head, { childList: true, subtree: true });
 
 function applyTheme() {
   if (isLight) {
