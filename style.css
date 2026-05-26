@@ -5,7 +5,7 @@
   --text: #cdd6f4;
   --text-muted: #7f849c;
   --accent: #89b4fa;
-  --error: #f38ba8;
+  --error: #b75e3f;
   --warning: #fab387;
   --info: #89dceb;
   --success: #a6e3a1;
@@ -15,10 +15,10 @@ body.light {
   --bg: #f0f4f8;
   --surface: #ffffff;
   --border: #dde3ed;
-  --text: #1b2533;
-  --text-muted: #5a6a7e;
+  --text: #2d4154;
+  --text-muted: #657586;
   --accent: #0176d3;
-  --error: #c23934;
+  --error: #b75e3f;
   --warning: #dd7a01;
   --info: #0070d2;
   --success: #2e844a;
@@ -175,7 +175,7 @@ body {
   margin-bottom: 8px;
   border-left: 3px solid;
 }
-.issue-item.error   { background: rgba(243,139,168,0.1); border-color: var(--error); }
+.issue-item.error   { background: rgba(183,94,63,0.12); border-color: var(--error); }
 .issue-item.warning { background: rgba(250,179,135,0.1); border-color: var(--warning); }
 .issue-item.info    { background: rgba(137,220,235,0.1); border-color: var(--info); }
 
