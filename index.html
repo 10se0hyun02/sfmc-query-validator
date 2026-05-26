@@ -41,9 +41,15 @@
     <div class="editor-panel">
       <div class="snippet-bar">
         <span class="snippet-label">삽입:</span>
-        <button class="snippet-btn" data-e="tsql" data-k="cast">CAST</button>
-        <button class="snippet-btn" data-e="tsql" data-k="newid">RANDOM</button>
+        <button class="snippet-btn" data-e="tsql" data-k="top">TOP N</button>
+        <button class="snippet-btn" data-e="tsql" data-k="into">INTO</button>
         <button class="snippet-btn" data-e="tsql" data-k="getdate">GETDATE()</button>
+        <button class="snippet-btn" data-e="tsql" data-k="dateadd">DATEADD</button>
+        <button class="snippet-btn" data-e="tsql" data-k="datediff">DATEDIFF</button>
+        <button class="snippet-btn" data-e="tsql" data-k="isnull">ISNULL</button>
+        <button class="snippet-btn" data-e="tsql" data-k="cast">CAST</button>
+        <button class="snippet-btn" data-e="tsql" data-k="join">JOIN</button>
+        <button class="snippet-btn" data-e="tsql" data-k="newid">RANDOM</button>
       </div>
       <div id="tsql-editor-container"></div>
     </div>
@@ -490,9 +496,15 @@ const TABLE_PRESETS = {
 // ── Snippets ─────────────────────────────────────────────────────
 const SNIPPETS = {
   tsql: {
-    cast:    'CAST(col AS VARCHAR(100))',
-    newid:   'ABS(CHECKSUM(NEWID())) % 100',
+    top:     'TOP 1000',
+    into:    'INTO [Result_DE]',
     getdate: 'GETDATE()',
+    dateadd: 'DATEADD(DAY, -30, GETDATE())',
+    datediff:'DATEDIFF(DAY, StartDate, GETDATE())',
+    isnull:  "ISNULL(col, '')",
+    cast:    'CAST(col AS VARCHAR(100))',
+    join:    'LEFT JOIN [DE_Name] alias ON alias.Key = t.Key',
+    newid:   'ABS(CHECKSUM(NEWID())) % 100',
   },
   mysql: {
     now:     'NOW()',
@@ -1012,7 +1024,7 @@ document.getElementById('tsql-btn-autofix').addEventListener('click', () => {
   if (!tsqlEditor) return;
   const before = tsqlEditor.getValue();
   const fixed  = autoFix(before);
-  if (fixed === before) { alert('교정할 항목이 없습니다.'); return; }
+  if (fixed === before) { alert('수정할 항목이 없습니다.'); return; }
   tsqlEditor.setValue(fixed);
   runTsqlValidate();
 });
@@ -1231,7 +1243,7 @@ document.getElementById('mysql-btn-autofix').addEventListener('click', () => {
   if (!mysqlEditor) return;
   const before = mysqlEditor.getValue();
   const fixed = autoFixMySQL(before);
-  if (fixed === before) { alert('교정할 항목이 없습니다.'); return; }
+  if (fixed === before) { alert('수정할 항목이 없습니다.'); return; }
   mysqlEditor.setValue(fixed);
   runMysqlValidate();
 });
