@@ -145,6 +145,7 @@
         </div>
         <div class="result-actions">
           <button class="btn btn-primary" id="mysql-btn-validate">검사하기</button>
+          <button class="btn btn-fix" id="mysql-btn-autofix">🔧 교정</button>
           <button class="btn btn-secondary" id="mysql-btn-save">💾 저장</button>
           <button class="btn btn-secondary" id="mysql-btn-load">📂 불러오기</button>
           <button class="btn btn-secondary" id="mysql-btn-clear">지우기</button>
@@ -712,9 +713,62 @@ function validateMySQL(sql) {
   return issues;
 }
 
+// ── MySQL Auto-Fix ───────────────────────────────────────────────
+function escapeInlineQuotes(sql) {
+  let result = '';
+  let inStr = false;
+  for (let i = 0; i < sql.length; i++) {
+    const ch = sql[i];
+    const next = sql[i + 1] ?? '';
+    if (!inStr && ch === "'") {
+      inStr = true;
+      result += ch;
+    } else if (inStr && ch === "'") {
+      if (next === "'") {
+        result += "''"; i++;          // 이미 이스케이프된 따옴표
+      } else if (/[a-zA-Z0-9가-힣_]/.test(next)) {
+        result += "''";               // 문자열 내부 미이스케이프 따옴표 → 교정
+      } else {
+        result += "'"; inStr = false; // 문자열 종료
+      }
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+}
+
+function autoFixMySQL(sql) {
+  if (!sql || !sql.trim()) return sql;
+  let fixed = sql;
+
+  // T-SQL 함수 → MySQL 변환
+  fixed = fixed.replace(/\bGETDATE\s*\(\s*\)/gi, 'NOW()');
+  fixed = fixed.replace(/\bISNULL\s*\(/gi, 'IFNULL(');
+
+  // [bracket 식별자] → `backtick` (Journey [[변수]] 제외)
+  fixed = fixed.replace(/(?<!\[)\[([^\[\]]+)\](?!\])/g, '`$1`');
+
+  // 닫는 괄호 바로 앞 trailing comma 제거
+  fixed = fixed.replace(/,(\s*\n\s*\))/g, '$1');
+
+  // 문자열 내 미이스케이프 작은따옴표 교정
+  fixed = escapeInlineQuotes(fixed);
+
+  return fixed;
+}
+
 // ── MySQL Actions ────────────────────────────────────────────────
 document.getElementById('mysql-btn-validate').addEventListener('click', runMysqlValidate);
 document.getElementById('mysql-btn-clear').addEventListener('click', () => mysqlEditor?.setValue(''));
+document.getElementById('mysql-btn-autofix').addEventListener('click', () => {
+  if (!mysqlEditor) return;
+  const before = mysqlEditor.getValue();
+  const fixed = autoFixMySQL(before);
+  if (fixed === before) { alert('교정할 항목이 없습니다.'); return; }
+  mysqlEditor.setValue(fixed);
+  runMysqlValidate();
+});
 
 function runMysqlValidate() {
   if (!mysqlEditor) return;
