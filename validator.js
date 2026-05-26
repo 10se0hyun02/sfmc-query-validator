@@ -30,17 +30,6 @@ const SFMC_RULES = [
     check: (sql) => /#\w+/.test(sql),
   },
   {
-    id: 'missing-into',
-    type: 'warning',
-    message: 'INTO 절이 없습니다. 결과가 저장되지 않습니다.',
-    suggestion: 'Query Activity는 결과를 저장할 DE를 INTO로 지정해야 합니다.\n예) SELECT TOP 1000\n    c.ContactKey, c.Email\nINTO [Result_DE]\nFROM [Contact_DE] c',
-    check: (sql) => {
-      const trimmed = sql.trim();
-      if (!/^\s*SELECT\b/i.test(trimmed)) return false;
-      return !/\bINTO\b/i.test(trimmed);
-    },
-  },
-  {
     id: 'missing-top',
     type: 'warning',
     message: 'SELECT TOP N 이 없습니다.',

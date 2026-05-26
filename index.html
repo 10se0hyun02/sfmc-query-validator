@@ -42,7 +42,6 @@
       <div class="snippet-bar">
         <span class="snippet-label">삽입:</span>
         <button class="snippet-btn" data-e="tsql" data-k="top">TOP N</button>
-        <button class="snippet-btn" data-e="tsql" data-k="into">INTO</button>
         <button class="snippet-btn" data-e="tsql" data-k="getdate">GETDATE()</button>
         <button class="snippet-btn" data-e="tsql" data-k="dateadd">DATEADD</button>
         <button class="snippet-btn" data-e="tsql" data-k="datediff">DATEDIFF</button>
@@ -497,7 +496,6 @@ const TABLE_PRESETS = {
 const SNIPPETS = {
   tsql: {
     top:     'TOP 1000',
-    into:    'INTO [Result_DE]',
     getdate: 'GETDATE()',
     dateadd: 'DATEADD(DAY, -30, GETDATE())',
     datediff:'DATEDIFF(DAY, StartDate, GETDATE())',
@@ -543,7 +541,7 @@ require(['vs/editor/editor.main'], function () {
 
   tsqlEditor = monaco.editor.create(document.getElementById('tsql-editor-container'), {
     ...base,
-    value: '-- SFMC T-SQL 예시\nSELECT TOP 1000\n    c.ContactKey,\n    c.Email\nINTO [Result_DE]\nFROM [Contact_DE] c\nWHERE c.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
+    value: '-- SFMC SQL Query Activity 예시\n-- Destination DE는 다음 탭에서 선택\nSELECT TOP 1000\n    c.ContactKey,\n    c.Email\nFROM [Contact_DE] c\nWHERE c.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
   });
 
   mysqlEditor = monaco.editor.create(document.getElementById('mysql-editor-container'), {
