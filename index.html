@@ -85,16 +85,20 @@
             </div>
             <div id="tsql-conn-result"></div>
             <div id="tsql-de-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-              <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Data Extension 조회</p>
-              <div class="field">
-                <label>External Key</label>
-                <div style="display:flex;gap:6px;">
-                  <input class="mock-input" id="tsql-de-key" placeholder="DE External Key (예: CONTACT_DE_001)" style="flex:1;" />
-                  <button class="btn btn-primary" id="tsql-de-fetch-btn" style="white-space:nowrap;">조회</button>
-                </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <p style="font-size:13px;font-weight:600;">Data Extension 조회</p>
+                <button class="btn btn-secondary" id="tsql-de-list-btn" style="font-size:11px;padding:3px 10px;">목록 불러오기</button>
               </div>
-              <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">💡 SFMC → Email Studio → Data Extensions → [DE 선택] → Properties에서 External Key 확인</p>
-              <div id="tsql-de-result"></div>
+              <div class="field" style="position:relative;">
+                <label>DE명 / External Key / URL</label>
+                <input class="mock-input" id="tsql-de-search" placeholder="DE 이름 검색 또는 External Key / SFMC URL 붙여넣기" autocomplete="off" />
+                <div id="tsql-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <input class="mock-input" id="tsql-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
+                <button class="btn btn-primary" id="tsql-de-fetch-btn" style="white-space:nowrap;">조회</button>
+              </div>
+              <div id="tsql-de-result" style="margin-top:10px;"></div>
             </div>
             <div class="cors-notice" style="margin-top:14px;">
               <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 프록시 설정 방법</p>
@@ -203,16 +207,20 @@
             </div>
             <div id="mysql-conn-result"></div>
             <div id="mysql-de-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-              <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Data Extension 조회</p>
-              <div class="field">
-                <label>External Key</label>
-                <div style="display:flex;gap:6px;">
-                  <input class="mock-input" id="mysql-de-key" placeholder="DE External Key (예: CONTACT_DE_001)" style="flex:1;" />
-                  <button class="btn btn-primary" id="mysql-de-fetch-btn" style="white-space:nowrap;">조회</button>
-                </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <p style="font-size:13px;font-weight:600;">Data Extension 조회</p>
+                <button class="btn btn-secondary" id="mysql-de-list-btn" style="font-size:11px;padding:3px 10px;">목록 불러오기</button>
               </div>
-              <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">💡 SFMC → Email Studio → Data Extensions → [DE 선택] → Properties에서 External Key 확인</p>
-              <div id="mysql-de-result"></div>
+              <div class="field" style="position:relative;">
+                <label>DE명 / External Key / URL</label>
+                <input class="mock-input" id="mysql-de-search" placeholder="DE 이름 검색 또는 External Key / SFMC URL 붙여넣기" autocomplete="off" />
+                <div id="mysql-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <input class="mock-input" id="mysql-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
+                <button class="btn btn-primary" id="mysql-de-fetch-btn" style="white-space:nowrap;">조회</button>
+              </div>
+              <div id="mysql-de-result" style="margin-top:10px;"></div>
             </div>
             <div class="cors-notice" style="margin-top:14px;">
               <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 프록시 설정 방법</p>
@@ -768,6 +776,139 @@ function renderDEPreview(el, data, deKey) {
 
 document.getElementById('tsql-de-fetch-btn').addEventListener('click',  () => fetchDEPreview('tsql'));
 document.getElementById('mysql-de-fetch-btn').addEventListener('click', () => fetchDEPreview('mysql'));
+document.getElementById('tsql-de-list-btn').addEventListener('click',   () => loadDEList('tsql'));
+document.getElementById('mysql-de-list-btn').addEventListener('click',  () => loadDEList('mysql'));
+document.getElementById('tsql-de-search').addEventListener('input',  e => onDESearchInput('tsql',  e.target.value));
+document.getElementById('mysql-de-search').addEventListener('input', e => onDESearchInput('mysql', e.target.value));
+document.addEventListener('click', e => {
+  if (!e.target.closest('.field')) {
+    document.getElementById('tsql-de-suggestions').style.display  = 'none';
+    document.getElementById('mysql-de-suggestions').style.display = 'none';
+  }
+});
+
+// ── DE List (SOAP) ────────────────────────────────────────────────
+sfmc.deList = [];
+
+async function loadDEList(mode) {
+  const btn       = document.getElementById(`${mode}-de-list-btn`);
+  const token     = sfmc.shared.token || sfmc[mode].token;
+  const subdomain = sfmc.shared.subdomain || sfmc[mode].subdomain;
+  if (!token) { btn.textContent = '연결 먼저!'; setTimeout(() => btn.textContent = '목록 불러오기', 2000); return; }
+
+  btn.textContent = '⏳ 불러오는 중...';
+  btn.disabled = true;
+
+  const soapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing">
+  <s:Header>
+    <a:Action s:mustUnderstand="1">Retrieve</a:Action>
+    <a:To s:mustUnderstand="1">https://${subdomain}.soap.marketingcloudapis.com/Service.asmx</a:To>
+    <fueloauth xmlns="http://exacttarget.com">${token}</fueloauth>
+  </s:Header>
+  <s:Body>
+    <RetrieveRequestMsg xmlns="http://exacttarget.com/wsdl/partnerAPI">
+      <RetrieveRequest>
+        <ObjectType>DataExtension</ObjectType>
+        <Properties>Name</Properties>
+        <Properties>CustomerKey</Properties>
+        <Properties>Description</Properties>
+      </RetrieveRequest>
+    </RetrieveRequestMsg>
+  </s:Body>
+</s:Envelope>`;
+
+  try {
+    const resp = await sfmcFetch(
+      `https://${subdomain}.soap.marketingcloudapis.com/Service.asmx`,
+      { method: 'POST', headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': 'Retrieve' }, body: soapXml }
+    );
+    const text = await resp.text();
+    const doc  = new DOMParser().parseFromString(text, 'text/xml');
+    sfmc.deList = Array.from(doc.querySelectorAll('Results')).map(r => ({
+      name: r.querySelector('Name')?.textContent  || '',
+      key:  r.querySelector('CustomerKey')?.textContent || '',
+      desc: r.querySelector('Description')?.textContent || '',
+    })).filter(d => d.name).sort((a, b) => a.name.localeCompare(b.name));
+
+    btn.textContent = `${sfmc.deList.length}개 로드됨`;
+    // 양쪽 탭 버튼 동기화
+    const other = mode === 'tsql' ? 'mysql' : 'tsql';
+    document.getElementById(`${other}-de-list-btn`).textContent = `${sfmc.deList.length}개 로드됨`;
+  } catch (err) {
+    btn.textContent = '실패 — 재시도';
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function extractKeyFromInput(val) {
+  // URL 패턴: .../DataExtensions/KEY 또는 externalKey=KEY
+  const patterns = [
+    /[#/]DataExtensions?[/=]([^/?&#"'\s]+)/i,
+    /externalKey=([^&"'\s]+)/i,
+    /customerkey=([^&"'\s]+)/i,
+  ];
+  for (const p of patterns) {
+    const m = val.match(p);
+    if (m) return decodeURIComponent(m[1]);
+  }
+  return null;
+}
+
+function onDESearchInput(mode, val) {
+  const suggestEl = document.getElementById(`${mode}-de-suggestions`);
+  const keyInput  = document.getElementById(`${mode}-de-key`);
+  val = val.trim();
+  if (!val) { suggestEl.style.display = 'none'; return; }
+
+  // URL 붙여넣기 감지
+  if (val.startsWith('http')) {
+    const extracted = extractKeyFromInput(val);
+    if (extracted) {
+      keyInput.value = extracted;
+      suggestEl.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--success);">✅ URL에서 External Key 추출: <strong>${extracted}</strong></div>`;
+      suggestEl.style.display = 'block';
+      return;
+    }
+  }
+
+  if (sfmc.deList.length === 0) {
+    suggestEl.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--text-muted);">"목록 불러오기"를 먼저 클릭하세요.</div>`;
+    suggestEl.style.display = 'block';
+    return;
+  }
+
+  const q = val.toLowerCase();
+  const matches = sfmc.deList.filter(d =>
+    d.name.toLowerCase().includes(q) || d.key.toLowerCase().includes(q)
+  ).slice(0, 12);
+
+  if (!matches.length) {
+    suggestEl.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--text-muted);">검색 결과 없음 — External Key로 직접 조회하려면 아래에 입력 후 조회 클릭</div>`;
+    suggestEl.style.display = 'block';
+    return;
+  }
+
+  suggestEl.innerHTML = matches.map(d => `
+    <div class="de-suggest-item" data-key="${d.key}" data-name="${d.name.replace(/"/g,'&quot;')}"
+         style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px;"
+         onmouseover="this.style.background='rgba(137,180,250,0.08)'" onmouseout="this.style.background=''">
+      <div style="font-weight:600;color:var(--text);">${d.name}</div>
+      <div style="color:var(--text-muted);font-family:monospace;font-size:11px;">${d.key}${d.desc ? ' — ' + d.desc : ''}</div>
+    </div>`).join('');
+
+  suggestEl.querySelectorAll('.de-suggest-item').forEach(el => {
+    el.addEventListener('click', () => {
+      document.getElementById(`${mode}-de-key`).value    = el.dataset.key;
+      document.getElementById(`${mode}-de-search`).value = el.dataset.name;
+      suggestEl.style.display = 'none';
+      fetchDEPreview(mode);
+    });
+  });
+  suggestEl.style.display = 'block';
+}
 
 // ── Snippets ─────────────────────────────────────────────────────
 function insertSnippet(editor, text) {

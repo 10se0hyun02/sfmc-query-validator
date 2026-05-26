@@ -42,7 +42,7 @@ export default {
     }
 
     // SFMC에 필요한 헤더만 선택적으로 전달 (브라우저 보안 헤더 제외)
-    const ALLOWED_HEADERS = new Set(['content-type', 'authorization', 'accept', 'accept-encoding']);
+    const ALLOWED_HEADERS = new Set(['content-type', 'authorization', 'accept', 'accept-encoding', 'soapaction']);
     const proxyHeaders = new Headers();
     for (const [key, val] of request.headers) {
       if (ALLOWED_HEADERS.has(key.toLowerCase())) {
