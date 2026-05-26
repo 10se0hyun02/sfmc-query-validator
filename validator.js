@@ -95,13 +95,14 @@ const SFMC_RULES = [
     message: 'SELECT 컬럼 목록에 콤마가 누락된 것 같습니다.',
     suggestion: '각 컬럼 사이에 콤마(,)를 추가하세요.\n예) SELECT col1,\n    col2,\n    col3\nFROM ...',
     check: (sql) => {
-      if (!/^\s*SELECT\b/i.test(sql.trim())) return false;
-      const m = sql.match(/\bSELECT\b([\s\S]+?)(?=\b(?:FROM|INTO|WHERE|GROUP|HAVING|ORDER)\b)/i);
+      const stripped = sql.replace(/--[^\n]*/g, ''); // 주석 제거 후 검사
+      if (!/\bSELECT\b/i.test(stripped)) return false;
+      const m = stripped.match(/\bSELECT\b([\s\S]+?)(?=\b(?:FROM|INTO|WHERE|GROUP|HAVING|ORDER)\b)/i);
       if (!m) return false;
       const clause = m[1].replace(/\([^)]*\)/g, '()');
       const lines = clause.split('\n')
         .map(l => l.trim())
-        .filter(l => l && !l.startsWith('--') && !/^\b(TOP|DISTINCT|ALL)\b/i.test(l));
+        .filter(l => l && !/^\b(TOP|DISTINCT|ALL)\b/i.test(l));
       if (lines.length < 2) return false;
       for (let i = 1; i < lines.length; i++) {
         const prev = lines[i - 1];
@@ -119,22 +120,19 @@ const SFMC_RULES = [
     message: 'INSERT 컬럼 또는 VALUES 목록에 콤마가 누락된 것 같습니다.',
     suggestion: '각 항목 사이에 콤마(,)를 추가하세요.\n예) INSERT INTO t (col1, col2) VALUES (val1, val2)',
     check: (sql) => {
-      if (!/\bINSERT\b/i.test(sql)) return false;
+      const stripped = sql.replace(/--[^\n]*/g, '');
+      if (!/\bINSERT\b/i.test(stripped)) return false;
       const hasMissing = (block) => {
-        const lines = block.split('\n')
-          .map(l => l.trim())
-          .filter(l => l && !l.startsWith('--'));
+        const lines = block.split('\n').map(l => l.trim()).filter(l => l);
         for (let i = 1; i < lines.length; i++) {
-          const prev = lines[i - 1];
-          const curr = lines[i];
-          if (!prev.endsWith(',') && !curr.startsWith(',') && /^[a-zA-Z_\[`'"]/.test(curr)) {
+          const prev = lines[i - 1], curr = lines[i];
+          if (!prev.endsWith(',') && !curr.startsWith(',') && /^[a-zA-Z_\[`'"]/.test(curr))
             return true;
-          }
         }
         return false;
       };
-      const colMatch = sql.match(/INSERT\s+INTO\s+\S+\s*\(([\s\S]+?)\)\s*(?:VALUES|SELECT)/i);
-      const valMatch = sql.match(/\bVALUES\s*\(([\s\S]+?)\)\s*$/i);
+      const colMatch = stripped.match(/INSERT\s+INTO\s+\S+\s*\(([\s\S]+?)\)\s*(?:VALUES|SELECT)/i);
+      const valMatch = stripped.match(/\bVALUES\s*\(([\s\S]+?)\)\s*;?\s*$/i);
       return (colMatch && hasMissing(colMatch[1])) || (valMatch && hasMissing(valMatch[1]));
     },
   },

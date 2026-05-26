@@ -711,8 +711,9 @@ function validateMySQL(sql) {
     issues.push({ type: 'info', message: '쿼리 끝에 세미콜론(;)이 없습니다.', suggestion: '세미콜론을 추가하면 멀티 쿼리 실행 시 명확합니다.' });
 
   // 콤마 누락 검사 (공통 헬퍼)
+  const stripped = sql.replace(/--[^\n]*/g, '');
   const checkMissingComma = (block) => {
-    const lines = block.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('--'));
+    const lines = block.split('\n').map(l => l.trim()).filter(l => l);
     for (let i = 1; i < lines.length; i++) {
       const prev = lines[i - 1], curr = lines[i];
       if (!prev.endsWith(',') && !curr.startsWith(',') && /^[a-zA-Z_`'"]/.test(curr))
@@ -722,14 +723,14 @@ function validateMySQL(sql) {
   };
 
   if (hasInsert) {
-    const colM = sql.match(/INSERT\s+INTO\s+\S+\s*\(([\s\S]+?)\)\s*VALUES/i);
-    const valM = sql.match(/\bVALUES\s*\(([\s\S]+?)\)\s*;?\s*$/i);
+    const colM = stripped.match(/INSERT\s+INTO\s+\S+\s*\(([\s\S]+?)\)\s*VALUES/i);
+    const valM = stripped.match(/\bVALUES\s*\(([\s\S]+?)\)\s*;?\s*$/i);
     if ((colM && checkMissingComma(colM[1])) || (valM && checkMissingComma(valM[1])))
       issues.push({ type: 'error', message: 'INSERT 컬럼 또는 VALUES 목록에 콤마가 누락된 것 같습니다.', suggestion: '각 항목 사이에 콤마(,)를 추가하세요.' });
   }
 
   if (hasUpdate) {
-    const setM = sql.match(/\bSET\b([\s\S]+?)(?=\bWHERE\b|$)/i);
+    const setM = stripped.match(/\bSET\b([\s\S]+?)(?=\bWHERE\b|$)/i);
     if (setM && checkMissingComma(setM[1]))
       issues.push({ type: 'error', message: 'UPDATE SET 절에 콤마가 누락된 것 같습니다.', suggestion: '각 컬럼 할당 사이에 콤마(,)를 추가하세요.' });
   }
