@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Salesforce Marketing Cloud Automation T-SQL Validator</title>
+  <title>SFMC Query Validator</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -12,106 +12,162 @@
 <div class="header">
   <img src="sf.svg" width="80" height="56" alt="Salesforce" style="flex-shrink:0;" />
   <div>
-    <h1>Salesforce Marketing Cloud Automation T-SQL Validator</h1>
-    <span>Automation Studio · Query Activity · SFMC T-SQL</span>
+    <h1>SFMC Query Validator</h1>
+    <span>Automation Studio T-SQL · Journey MySQL</span>
   </div>
   <button id="btn-theme" title="라이트/다크 모드 전환"
-    style="margin-left:auto; background:none; border:1px solid var(--border); border-radius:20px; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.2s;">
+    style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:20px;width:34px;height:34px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;">
     <span id="theme-icon">☀️</span>
   </button>
 </div>
 
-<!-- Tabs -->
-<div class="tabs">
-  <button class="tab-btn active" data-tab="validate">✅ Validate</button>
-  <button class="tab-btn" data-tab="connect">🔗 Connect SFMC</button>
+<!-- Mode Tabs -->
+<div class="mode-tabs">
+  <button class="mode-tab active" data-mode="tsql">⚡ T-SQL<small>Automation Studio</small></button>
+  <button class="mode-tab" data-mode="mysql">🔄 MySQL<small>Journey Custom Activity</small></button>
 </div>
 
-<!-- Main -->
-<div class="main">
-
-  <!-- Left: Editor -->
-  <div class="editor-panel">
-    <div class="editor-toolbar">
-      <button class="btn btn-primary" id="btn-action">검사하기</button>
-      <button class="btn btn-fix" id="btn-autofix">🔧 자동 교정</button>
-      <div class="toolbar-sep"></div>
-      <button class="btn btn-secondary" id="btn-save">💾 저장</button>
-      <button class="btn btn-secondary" id="btn-load">📂 불러오기</button>
-      <button class="btn btn-secondary" id="btn-clear">지우기</button>
-    </div>
-    <div class="snippet-bar">
-      <span class="snippet-label">삽입:</span>
-      <button class="snippet-btn" onclick="insertSnippet('GETDATE()')">GETDATE()</button>
-      <button class="snippet-btn" onclick="insertSnippet('DATEADD(DAY, -30, GETDATE())')">DATEADD</button>
-      <button class="snippet-btn" onclick="insertSnippet('DATEDIFF(DAY, StartDate, GETDATE())')">DATEDIFF</button>
-      <button class="snippet-btn" onclick="insertSnippet('ISNULL(col, \'\')')">ISNULL</button>
-      <button class="snippet-btn" onclick="insertSnippet('SELECT TOP 1000\n\nINTO [Result_DE]\nFROM ')">SELECT TOP</button>
-      <button class="snippet-btn" onclick="insertSnippet('DATEADD(DAY, -30, GETDATE())')">-30일</button>
-    </div>
-    <div id="editor-container"></div>
+<!-- ══ T-SQL MODE ══ -->
+<div id="mode-tsql" class="mode-wrap">
+  <div class="tabs">
+    <button class="tab-btn active" data-mode="tsql" data-tab="tsql-result">✅ 검사 결과</button>
+    <button class="tab-btn" data-mode="tsql" data-tab="tsql-connect">🔗 SFMC 연결</button>
   </div>
-
-  <!-- Right: Results -->
-  <div class="result-panel">
-    <div class="result-inner" id="result-panel">
-
-      <!-- === Validate Tab === -->
-      <div id="tab-validate">
-        <div class="empty-state">
-          <div class="icon">📝</div>
-          <div>SQL을 입력하고 <strong>검사하기</strong>를 클릭하세요</div>
-        </div>
+  <div class="main">
+    <div class="editor-panel">
+      <div class="editor-toolbar">
+        <button class="btn btn-primary" id="tsql-btn-validate">검사하기</button>
+        <button class="btn btn-fix" id="tsql-btn-autofix">🔧 자동 교정</button>
+        <div class="toolbar-sep"></div>
+        <button class="btn btn-secondary" id="tsql-btn-save">💾 저장</button>
+        <button class="btn btn-secondary" id="tsql-btn-load">📂 불러오기</button>
+        <button class="btn btn-secondary" id="tsql-btn-clear">지우기</button>
       </div>
-
-
-      <!-- === Connect SFMC Tab === -->
-      <div id="tab-connect" style="display:none">
-        <div class="connect-form">
-          <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px; line-height:1.6;">
-            SFMC Installed Package의 Client ID / Secret을 입력하면
-            연결 테스트 및 DE 목록을 가져올 수 있습니다.
-          </p>
-          <div class="field">
-            <label>Subdomain</label>
-            <input class="mock-input" id="conn-subdomain" placeholder="mc.xxxxxxxx" />
+      <div class="snippet-bar">
+        <span class="snippet-label">삽입:</span>
+        <button class="snippet-btn" data-e="tsql" data-k="getdate">GETDATE()</button>
+        <button class="snippet-btn" data-e="tsql" data-k="dateadd">DATEADD</button>
+        <button class="snippet-btn" data-e="tsql" data-k="datediff">DATEDIFF</button>
+        <button class="snippet-btn" data-e="tsql" data-k="isnull">ISNULL</button>
+        <button class="snippet-btn" data-e="tsql" data-k="selecttop">SELECT TOP</button>
+        <button class="snippet-btn" data-e="tsql" data-k="minus30">-30일</button>
+      </div>
+      <div id="tsql-editor-container"></div>
+    </div>
+    <div class="result-panel">
+      <div class="result-inner">
+        <div id="tsql-result">
+          <div class="empty-state">
+            <div class="icon">📝</div>
+            <div>SQL을 입력하고 <strong>검사하기</strong>를 클릭하세요</div>
           </div>
-          <div class="field">
-            <label>Client ID</label>
-            <input class="mock-input" id="conn-client-id" placeholder="xxxx-xxxx-xxxx-xxxx" />
-          </div>
-          <div class="field">
-            <label>Client Secret</label>
-            <input class="mock-input" id="conn-client-secret" type="password" placeholder="••••••••••••" />
-          </div>
-          <button class="btn btn-primary" id="btn-connect" style="width:100%; margin-bottom:12px;">연결 테스트</button>
-          <div id="connect-result"></div>
-          <div style="margin-top:16px; padding:12px; background:var(--surface); border-radius:8px; border:1px solid var(--border);">
-            <p style="font-size:12px; color:var(--warning); font-weight:600; margin-bottom:6px;">⚠️ CORS 제한 안내</p>
-            <p style="font-size:12px; color:var(--text-muted); line-height:1.6;">
-              브라우저에서 직접 SFMC API를 호출하면 CORS 오류가 발생합니다.
-              실제 연결을 사용하려면 로컬 프록시 서버가 필요합니다.<br/><br/>
-              터미널에서 아래 명령어로 프록시 실행:
-            </p>
-            <code style="display:block; margin-top:8px; font-size:12px; color:var(--success); font-family:monospace;">
-              npx local-cors-proxy --proxyUrl https://[subdomain].auth.marketingcloudapis.com
-            </code>
+        </div>
+        <div id="tsql-connect" style="display:none">
+          <div class="connect-form">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
+            <div class="conn-share-row">
+              <label><input type="checkbox" id="tsql-use-shared" checked> 공유 연결 사용</label>
+              <span class="conn-share-hint">MySQL 탭과 연결 정보 공유</span>
+            </div>
+            <div id="tsql-shared-form">
+              <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
+              <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
+              <div class="field"><label>Client Secret</label><input class="mock-input" id="tsql-sh-secret" type="password" placeholder="••••••••••••" /></div>
+              <button class="btn btn-primary" id="tsql-sh-btn" style="width:100%;margin-bottom:12px;">연결 테스트 (공유)</button>
+            </div>
+            <div id="tsql-own-form" style="display:none">
+              <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
+              <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
+              <div class="field"><label>Client Secret</label><input class="mock-input" id="tsql-own-secret" type="password" placeholder="••••••••••••" /></div>
+              <button class="btn btn-primary" id="tsql-own-btn" style="width:100%;margin-bottom:12px;">연결 테스트 (독립)</button>
+            </div>
+            <div id="tsql-conn-result"></div>
+            <div class="cors-notice">
+              <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 제한 안내</p>
+              <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. 로컬 프록시가 필요합니다.</p>
+              <code style="display:block;margin-top:8px;font-size:12px;color:var(--success);font-family:monospace;">npx local-cors-proxy --proxyUrl https://[subdomain].auth.marketingcloudapis.com</code>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   </div>
+</div>
 
+<!-- ══ MySQL MODE ══ -->
+<div id="mode-mysql" class="mode-wrap" style="display:none">
+  <div class="tabs">
+    <button class="tab-btn active" data-mode="mysql" data-tab="mysql-result">✅ 검사 결과</button>
+    <button class="tab-btn" data-mode="mysql" data-tab="mysql-connect">🔗 SFMC 연결</button>
+  </div>
+  <div class="main">
+    <div class="editor-panel">
+      <div class="editor-toolbar">
+        <button class="btn btn-primary" id="mysql-btn-validate">검사하기</button>
+        <div class="toolbar-sep"></div>
+        <button class="btn btn-secondary" id="mysql-btn-save">💾 저장</button>
+        <button class="btn btn-secondary" id="mysql-btn-load">📂 불러오기</button>
+        <button class="btn btn-secondary" id="mysql-btn-clear">지우기</button>
+      </div>
+      <div class="snippet-bar">
+        <span class="snippet-label">삽입:</span>
+        <button class="snippet-btn" data-e="mysql" data-k="now">NOW()</button>
+        <button class="snippet-btn" data-e="mysql" data-k="ifnull">IFNULL</button>
+        <button class="snippet-btn" data-e="mysql" data-k="dateadd">DATE_ADD</button>
+        <button class="snippet-btn" data-e="mysql" data-k="datediff">DATEDIFF</button>
+        <button class="snippet-btn" data-e="mysql" data-k="var">[[변수]]</button>
+        <button class="snippet-btn" data-e="mysql" data-k="insert">INSERT</button>
+        <button class="snippet-btn" data-e="mysql" data-k="update">UPDATE</button>
+      </div>
+      <div id="mysql-editor-container"></div>
+    </div>
+    <div class="result-panel">
+      <div class="result-inner">
+        <div id="mysql-result">
+          <div class="empty-state">
+            <div class="icon">📝</div>
+            <div>MySQL 쿼리를 입력하고 <strong>검사하기</strong>를 클릭하세요</div>
+          </div>
+        </div>
+        <div id="mysql-connect" style="display:none">
+          <div class="connect-form">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
+            <div class="conn-share-row">
+              <label><input type="checkbox" id="mysql-use-shared" checked> 공유 연결 사용</label>
+              <span class="conn-share-hint">T-SQL 탭과 연결 정보 공유</span>
+            </div>
+            <div id="mysql-shared-form">
+              <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
+              <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
+              <div class="field"><label>Client Secret</label><input class="mock-input" id="mysql-sh-secret" type="password" placeholder="••••••••••••" /></div>
+              <button class="btn btn-primary" id="mysql-sh-btn" style="width:100%;margin-bottom:12px;">연결 테스트 (공유)</button>
+            </div>
+            <div id="mysql-own-form" style="display:none">
+              <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
+              <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
+              <div class="field"><label>Client Secret</label><input class="mock-input" id="mysql-own-secret" type="password" placeholder="••••••••••••" /></div>
+              <button class="btn btn-primary" id="mysql-own-btn" style="width:100%;margin-bottom:12px;">연결 테스트 (독립)</button>
+            </div>
+            <div id="mysql-conn-result"></div>
+            <div class="cors-notice">
+              <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 제한 안내</p>
+              <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. 로컬 프록시가 필요합니다.</p>
+              <code style="display:block;margin-top:8px;font-size:12px;color:var(--success);font-family:monospace;">npx local-cors-proxy --proxyUrl https://[subdomain].auth.marketingcloudapis.com</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- 저장 모달 -->
 <div class="modal-overlay" id="save-modal" style="display:none" onclick="closeModal('save-modal')">
   <div class="modal" onclick="event.stopPropagation()">
-    <h3 style="font-size:15px; font-weight:600; margin-bottom:14px;">💾 쿼리 저장</h3>
-    <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">쿼리 이름</label>
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:14px;">💾 쿼리 저장</h3>
+    <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">쿼리 이름</label>
     <input class="mock-input" id="save-name" placeholder="예) 월간 구매 고객 조회" onkeydown="if(event.key==='Enter') saveQuery()" />
-    <div style="display:flex; gap:8px; margin-top:12px;">
+    <div style="display:flex;gap:8px;margin-top:12px;">
       <button class="btn btn-primary" style="flex:1" onclick="saveQuery()">저장</button>
       <button class="btn btn-secondary" style="flex:1" onclick="closeModal('save-modal')">취소</button>
     </div>
@@ -121,20 +177,16 @@
 <!-- 불러오기 모달 -->
 <div class="modal-overlay" id="load-modal" style="display:none" onclick="closeModal('load-modal')">
   <div class="modal" onclick="event.stopPropagation()">
-    <h3 style="font-size:15px; font-weight:600; margin-bottom:14px;">📂 저장된 쿼리</h3>
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:14px;">📂 저장된 쿼리</h3>
     <div id="saved-list"></div>
-    <button class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="closeModal('load-modal')">닫기</button>
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="closeModal('load-modal')">닫기</button>
   </div>
 </div>
 
-<!-- sql.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
-<!-- Monaco Editor -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 <script src="validator.js"></script>
-
 <script>
-// ─── 라이트/다크 모드 토글 ────────────────────────────────────
+// ── Theme ────────────────────────────────────────────────────────
 const themeBtn  = document.getElementById('btn-theme');
 const themeIcon = document.getElementById('theme-icon');
 let isLight = localStorage.getItem('sfmc_theme') === 'light';
@@ -148,16 +200,12 @@ function fixStringColor() {
         const m = (rule.style.color || '').match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
         if (!m) continue;
         const [, r, g, b] = m.map(Number);
-        // 따뜻한 계열(빨강/주황/살구) 색상 범위를 초록으로 교체
-        if (r > 180 && g > 100 && g < 175 && b < 145 && r > b) {
+        if (r > 180 && g > 100 && g < 175 && b < 145 && r > b)
           rule.style.setProperty('color', '#98c379', 'important');
-        }
       }
     } catch(e) {}
   }
 }
-
-// Monaco가 스타일을 주입할 때마다 자동으로 색상 고정
 const _colorObserver = new MutationObserver(() => fixStringColor());
 _colorObserver.observe(document.head, { childList: true, subtree: true });
 
@@ -169,285 +217,161 @@ function applyTheme() {
   } else {
     document.body.classList.remove('light');
     themeIcon.textContent = '☀️';
-    if (typeof monaco !== 'undefined') {
-      monaco.editor.setTheme('custom-dark');
-      setTimeout(fixStringColor, 200);
-    }
+    if (typeof monaco !== 'undefined') { monaco.editor.setTheme('custom-dark'); setTimeout(fixStringColor, 200); }
   }
   localStorage.setItem('sfmc_theme', isLight ? 'light' : 'dark');
 }
-
-themeBtn.addEventListener('click', () => {
-  isLight = !isLight;
-  applyTheme();
-});
-
+themeBtn.addEventListener('click', () => { isLight = !isLight; applyTheme(); });
 applyTheme();
 
-// ─── Monaco Editor 초기화 ────────────────────────────────────
-let editor;
-require.config({
-  paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }
-});
+// ── SFMC State ───────────────────────────────────────────────────
+const sfmc = {
+  shared: { subdomain: '', clientId: '', token: null },
+  tsql:   { useShared: true, subdomain: '', clientId: '', token: null },
+  mysql:  { useShared: true, subdomain: '', clientId: '', token: null },
+};
+
+// ── Snippets ─────────────────────────────────────────────────────
+const SNIPPETS = {
+  tsql: {
+    getdate:  'GETDATE()',
+    dateadd:  'DATEADD(DAY, -30, GETDATE())',
+    datediff: 'DATEDIFF(DAY, StartDate, GETDATE())',
+    isnull:   "ISNULL(col, '')",
+    selecttop:'SELECT TOP 1000\n\nINTO [Result_DE]\nFROM ',
+    minus30:  'DATEADD(DAY, -30, GETDATE())',
+  },
+  mysql: {
+    now:     'NOW()',
+    ifnull:  "IFNULL(col, '')",
+    dateadd: 'DATE_ADD(NOW(), INTERVAL -30 DAY)',
+    datediff:'DATEDIFF(NOW(), date_col)',
+    var:     '[[ContactKey]]',
+    insert:  "INSERT INTO `table_name` (col1, col2)\nVALUES ('val1', 'val2');",
+    update:  "UPDATE `table_name`\nSET col1 = 'val1'\nWHERE id = [[id]];",
+  },
+};
+
+// ── Monaco Init ──────────────────────────────────────────────────
+let tsqlEditor, mysqlEditor;
+require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
 require(['vs/editor/editor.main'], function () {
   monaco.editor.defineTheme('custom-dark', {
-    base: 'vs-dark',
-    inherit: true,
+    base: 'vs-dark', inherit: true,
     rules: [
-      { token: 'string',              foreground: '98c379' },
-      { token: 'string.sql',          foreground: '98c379' },
-      { token: 'string.escape',       foreground: '98c379' },
-      { token: 'string.escape.sql',   foreground: '98c379' },
-      { token: 'string.delim',        foreground: '98c379' },
-      { token: 'comment',             foreground: '7f849c' },
-      { token: 'comment.sql',         foreground: '7f849c' },
+      { token: 'string',            foreground: '98c379' },
+      { token: 'string.sql',        foreground: '98c379' },
+      { token: 'string.escape',     foreground: '98c379' },
+      { token: 'string.escape.sql', foreground: '98c379' },
+      { token: 'comment',           foreground: '7f849c' },
+      { token: 'comment.sql',       foreground: '7f849c' },
     ],
     colors: {}
   });
-  editor = monaco.editor.create(document.getElementById('editor-container'), {
-    value: [
-      '-- SFMC T-SQL 예시',
-      'SELECT TOP 10',
-      '    c.ContactKey,',
-      '    c.Email,',
-      '    c.FirstName,',
-      '    o.OrderAmount',
-      'INTO [Result_DE]',
-      'FROM [Contact_DE] c',
-      'INNER JOIN [Order_DE] o',
-      '    ON c.ContactKey = o.ContactKey',
-      'WHERE o.OrderDate >= DATEADD(DAY, -30, GETDATE())',
-    ].join('\n'),
-    language: 'sql',
-    theme: isLight ? 'vs' : 'custom-dark',
-    fontSize: 14,
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    wordWrap: 'on',
-    automaticLayout: true,
-    lineNumbers: 'on',
-    renderLineHighlight: 'all',
-    padding: { top: 12 },
-    suggestOnTriggerCharacters: true,
+
+  const base = {
+    language: 'sql', theme: isLight ? 'vs' : 'custom-dark',
+    fontSize: 14, minimap: { enabled: false }, scrollBeyondLastLine: false,
+    wordWrap: 'on', automaticLayout: true, lineNumbers: 'on',
+    renderLineHighlight: 'all', padding: { top: 12 }, suggestOnTriggerCharacters: true,
+  };
+
+  tsqlEditor = monaco.editor.create(document.getElementById('tsql-editor-container'), {
+    ...base,
+    value: '-- SFMC T-SQL 예시\nSELECT TOP 1000\n    c.ContactKey,\n    c.Email\nINTO [Result_DE]\nFROM [Contact_DE] c\nWHERE c.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
+  });
+
+  mysqlEditor = monaco.editor.create(document.getElementById('mysql-editor-container'), {
+    ...base,
+    value: "-- Journey Custom Activity MySQL 예시\nINSERT INTO `customer_log` (contact_key, email, action_date)\nVALUES ('[[ContactKey]]', '[[EmailAddress]]', NOW());",
   });
 
   setTimeout(fixStringColor, 400);
 
-  // SFMC 함수 자동완성 등록
   monaco.languages.registerCompletionItemProvider('sql', {
-    provideCompletionItems: function(model, position) {
-      const range = {
-        startLineNumber: position.lineNumber, endLineNumber: position.lineNumber,
-        startColumn: position.column, endColumn: position.column,
-      };
-      const fn = (label, insertText, detail) => ({
-        label, insertText, detail, range,
-        kind: monaco.languages.CompletionItemKind.Function,
-        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-      });
+    provideCompletionItems: (model, position) => {
+      const range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: position.column, endColumn: position.column };
+      const fn = (label, insertText, detail) => ({ label, insertText, detail, range, kind: monaco.languages.CompletionItemKind.Function, insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet });
       return { suggestions: [
-        fn('GETDATE',    'GETDATE()',                               '현재 날짜/시간'),
-        fn('DATEADD',    'DATEADD(${1:DAY}, ${2:-30}, GETDATE())', 'DATEADD(unit, n, date)'),
-        fn('DATEDIFF',   'DATEDIFF(${1:DAY}, ${2:StartDate}, GETDATE())', 'DATEDIFF(unit, start, end)'),
-        fn('ISNULL',     "ISNULL(${1:col}, ${2:''})",              'NULL이면 기본값 반환'),
-        fn('STRING_AGG', "STRING_AGG(${1:col}, ',')",              'GROUP_CONCAT 대체'),
-        fn('CONCAT',     'CONCAT(${1:a}, ${2:b})',                 '문자열 합치기'),
-        fn('TOP',        'TOP ${1:1000}',                          '결과 행 수 제한'),
-        fn('INTO',       'INTO [${1:Result_DE}]',                  '결과 DE 지정'),
+        fn('GETDATE',  'GETDATE()',                               '현재 날짜/시간 (T-SQL)'),
+        fn('NOW',      'NOW()',                                   '현재 날짜/시간 (MySQL)'),
+        fn('DATEADD',  'DATEADD(${1:DAY}, ${2:-30}, GETDATE())', 'T-SQL 날짜 연산'),
+        fn('DATE_ADD', 'DATE_ADD(NOW(), INTERVAL ${1:-30} DAY)', 'MySQL 날짜 연산'),
+        fn('DATEDIFF', 'DATEDIFF(${1:DAY}, ${2:StartDate}, GETDATE())', '날짜 차이'),
+        fn('ISNULL',   "ISNULL(${1:col}, ${2:''})",              'NULL 처리 (T-SQL)'),
+        fn('IFNULL',   "IFNULL(${1:col}, ${2:''})",              'NULL 처리 (MySQL)'),
+        fn('CONCAT',   'CONCAT(${1:a}, ${2:b})',                 '문자열 합치기'),
+        fn('TOP',      'TOP ${1:1000}',                          'T-SQL 결과 수 제한'),
+        fn('LIMIT',    'LIMIT ${1:100}',                         'MySQL 결과 수 제한'),
+        fn('INTO',     'INTO [${1:Result_DE}]',                  'T-SQL 결과 DE 지정'),
       ]};
     }
   });
 });
 
-// ─── 탭 전환 ─────────────────────────────────────────────────
-let activeTab = 'validate';
-const tabContents = {
-  validate: document.getElementById('tab-validate'),
-  connect: document.getElementById('tab-connect'),
-};
-const tabLabels = {
-  validate: '검사하기',
-  connect: '연결 테스트',
-};
+// ── Mode Switching ───────────────────────────────────────────────
+let activeMode = 'tsql';
+document.querySelectorAll('.mode-tab').forEach(btn => {
+  btn.addEventListener('click', () => switchMode(btn.dataset.mode));
+});
 
-document.querySelectorAll('.tab-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    activeTab = btn.dataset.tab;
-    Object.entries(tabContents).forEach(([key, el]) => {
-      el.style.display = key === activeTab ? 'block' : 'none';
-    });
-    document.getElementById('btn-action').textContent = tabLabels[activeTab];
+function switchMode(mode) {
+  activeMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  document.querySelectorAll('.mode-wrap').forEach(el => {
+    el.style.display = el.id === `mode-${mode}` ? 'flex' : 'none';
   });
-});
-
-// ─── 액션 버튼 ───────────────────────────────────────────────
-document.getElementById('btn-action').addEventListener('click', () => {
-  if (activeTab === 'validate') runValidate();
-  else if (activeTab === 'connect') connectSFMC();
-});
-
-document.getElementById('btn-clear').addEventListener('click', () => {
-  if (editor) editor.setValue('');
-});
-
-// ─── 자동 교정 ───────────────────────────────────────────────
-document.getElementById('btn-autofix').addEventListener('click', () => {
-  if (!editor) return;
-  const before = editor.getValue();
-  const fixed  = autoFix(before);
-  if (fixed === before) {
-    alert('교정할 항목이 없습니다.');
-    return;
-  }
-  editor.setValue(fixed);
-  if (activeTab === 'validate') runValidate();
-});
-
-// ─── 스니펫 삽입 ──────────────────────────────────────────────
-function insertSnippet(text) {
-  if (!editor) return;
-  const pos = editor.getPosition();
-  editor.executeEdits('snippet', [{
-    range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
-    text,
-  }]);
-  editor.focus();
+  setTimeout(() => {
+    if (mode === 'tsql' && tsqlEditor) tsqlEditor.layout();
+    if (mode === 'mysql' && mysqlEditor) mysqlEditor.layout();
+  }, 10);
 }
 
-// ─── 모달 제어 ────────────────────────────────────────────────
-function openModal(id)  { document.getElementById(id).style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-// ─── 저장 ─────────────────────────────────────────────────────
-document.getElementById('btn-save').addEventListener('click', () => {
-  document.getElementById('save-name').value = '';
-  openModal('save-modal');
-  setTimeout(() => document.getElementById('save-name').focus(), 100);
+// ── Sub-tab Switching ────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => openSubTab(btn.dataset.mode, btn.dataset.tab));
 });
 
-function saveQuery() {
-  const name = document.getElementById('save-name').value.trim();
-  if (!name) { document.getElementById('save-name').style.borderColor = 'var(--error)'; return; }
-  const sql   = editor ? editor.getValue() : '';
-  const saved = JSON.parse(localStorage.getItem('sfmc_queries') || '{}');
-  saved[name] = { sql, date: new Date().toLocaleDateString('ko-KR') };
-  localStorage.setItem('sfmc_queries', JSON.stringify(saved));
-  closeModal('save-modal');
+function openSubTab(mode, tabId) {
+  document.querySelectorAll(`#mode-${mode} .tab-btn`).forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  [`${mode}-result`, `${mode}-connect`].forEach(id => {
+    document.getElementById(id).style.display = id === tabId ? 'block' : 'none';
+  });
+  if (tabId === `${mode}-connect`) prefillConnectForm(mode);
 }
 
-// ─── 불러오기 ─────────────────────────────────────────────────
-document.getElementById('btn-load').addEventListener('click', () => {
-  const saved = JSON.parse(localStorage.getItem('sfmc_queries') || '{}');
-  const keys  = Object.keys(saved);
-  const listEl = document.getElementById('saved-list');
-
-  if (keys.length === 0) {
-    listEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px;">저장된 쿼리 없음</div>';
-  } else {
-    listEl.innerHTML = keys.map(k => `
-      <div class="saved-item">
-        <div>
-          <div style="font-size:13px;font-weight:500;">${k}</div>
-          <div style="font-size:11px;color:var(--text-muted);">${saved[k].date}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button class="btn btn-primary" style="font-size:11px;padding:3px 10px;"
-            onclick="loadQuery(this)">불러오기</button>
-          <button class="btn btn-danger"
-            onclick="deleteQuery(this)">삭제</button>
-        </div>
-      </div>`
-    ).join('');
-    // 쿼리 이름을 data attr에 안전하게 저장
-    listEl.querySelectorAll('.saved-item').forEach((el, i) => {
-      el.dataset.key = keys[i];
-      el.querySelector('.btn-primary').dataset.key = keys[i];
-      el.querySelector('.btn-danger').dataset.key  = keys[i];
-    });
-  }
-  openModal('load-modal');
-});
-
-function loadQuery(btn) {
-  const name  = btn.dataset.key;
-  const saved = JSON.parse(localStorage.getItem('sfmc_queries') || '{}');
-  if (saved[name] && editor) {
-    editor.setValue(saved[name].sql);
-    closeModal('load-modal');
-  }
+// ── SFMC Connection ──────────────────────────────────────────────
+function prefillConnectForm(mode) {
+  const useShared = document.getElementById(`${mode}-use-shared`).checked;
+  const data   = useShared ? sfmc.shared : sfmc[mode];
+  const prefix = useShared ? `${mode}-sh` : `${mode}-own`;
+  document.getElementById(`${prefix}-subdomain`).value = data.subdomain || '';
+  document.getElementById(`${prefix}-clientid`).value  = data.clientId  || '';
 }
 
-function deleteQuery(btn) {
-  const name  = btn.dataset.key;
-  const saved = JSON.parse(localStorage.getItem('sfmc_queries') || '{}');
-  delete saved[name];
-  localStorage.setItem('sfmc_queries', JSON.stringify(saved));
-  document.getElementById('btn-load').click();
+function onShareToggle(mode) {
+  const useShared = document.getElementById(`${mode}-use-shared`).checked;
+  sfmc[mode].useShared = useShared;
+  document.getElementById(`${mode}-shared-form`).style.display = useShared ? 'block' : 'none';
+  document.getElementById(`${mode}-own-form`).style.display    = useShared ? 'none'  : 'block';
+  prefillConnectForm(mode);
 }
 
-// ─── Validate ─────────────────────────────────────────────────
-function runValidate() {
-  if (!editor) return;
-  const sql = editor.getValue();
-  const issues = validate(sql);
-  const panel = document.getElementById('tab-validate');
+document.getElementById('tsql-use-shared').addEventListener('change', () => onShareToggle('tsql'));
+document.getElementById('mysql-use-shared').addEventListener('change', () => onShareToggle('mysql'));
 
-  if (issues.length === 0) {
-    panel.innerHTML = `
-      <div class="all-good">
-        <div class="icon">✅</div>
-        <div style="font-size:15px; font-weight:600; margin-bottom:4px;">이상 없음</div>
-        <div style="color:var(--text-muted); font-size:13px;">SFMC T-SQL 규칙 검사를 통과했습니다.</div>
-      </div>`;
-    return;
-  }
-
-  const errors   = issues.filter((i) => i.type === 'error');
-  const warnings = issues.filter((i) => i.type === 'warning');
-  const infos    = issues.filter((i) => i.type === 'info');
-
-  const summary = [
-    errors.length   ? `<span style="color:var(--error)">❌ 오류 ${errors.length}건</span>`     : '',
-    warnings.length ? `<span style="color:var(--warning)">⚠️ 경고 ${warnings.length}건</span>` : '',
-    infos.length    ? `<span style="color:var(--info)">ℹ️ 정보 ${infos.length}건</span>`       : '',
-  ].filter(Boolean).join('&nbsp;&nbsp;');
-
-  const renderItems = (list) => list.map((i) => `
-    <div class="issue-item ${i.type}">
-      <span class="issue-badge ${i.type}">${
-        i.type === 'error' ? '오류' : i.type === 'warning' ? '경고' : '정보'
-      }</span>
-      <div class="issue-msg">${i.message}</div>
-      <div class="issue-suggestion">💡 ${i.suggestion}</div>
-    </div>`).join('');
-
-  panel.innerHTML = `
-    <div class="result-section">
-      <div style="margin-bottom:12px; display:flex; gap:12px; font-size:13px;">${summary}</div>
-      ${renderItems(errors)}
-      ${renderItems(warnings)}
-      ${renderItems(infos)}
-    </div>`;
-}
-
-
-// ─── Connect SFMC ─────────────────────────────────────────────
-document.getElementById('btn-connect').addEventListener('click', connectSFMC);
-
-async function connectSFMC() {
-  const subdomain = document.getElementById('conn-subdomain').value.trim();
-  const clientId  = document.getElementById('conn-client-id').value.trim();
-  const secret    = document.getElementById('conn-client-secret').value.trim();
-  const resultEl  = document.getElementById('connect-result');
+async function connectSFMC(mode, useShared) {
+  const prefix   = useShared ? `${mode}-sh` : `${mode}-own`;
+  const subdomain = document.getElementById(`${prefix}-subdomain`).value.trim();
+  const clientId  = document.getElementById(`${prefix}-clientid`).value.trim();
+  const secret    = document.getElementById(`${prefix}-secret`).value.trim();
+  const resultEl  = document.getElementById(`${mode}-conn-result`);
 
   if (!subdomain || !clientId || !secret) {
     resultEl.innerHTML = `<div class="issue-item warning"><span class="issue-badge warning">입력 오류</span><div class="issue-msg">모든 필드를 입력해주세요.</div></div>`;
     return;
   }
-
-  resultEl.innerHTML = `<div style="color:var(--text-muted); font-size:13px;">⏳ 연결 시도 중...</div>`;
+  resultEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">⏳ 연결 시도 중...</div>`;
 
   try {
     const resp = await fetch(`https://${subdomain}.auth.marketingcloudapis.com/v2/token`, {
@@ -455,24 +379,219 @@ async function connectSFMC() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ grant_type: 'client_credentials', client_id: clientId, client_secret: secret }),
     });
-
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
+    const data  = await resp.json();
+    const token = data.access_token;
+
+    if (useShared) {
+      sfmc.shared.subdomain = subdomain; sfmc.shared.clientId = clientId; sfmc.shared.token = token;
+      sfmc.tsql.token = token; sfmc.mysql.token = token;
+    } else {
+      sfmc[mode].subdomain = subdomain; sfmc[mode].clientId = clientId; sfmc[mode].token = token;
+    }
 
     resultEl.innerHTML = `
-      <div class="issue-item" style="border-color:var(--success); background:rgba(166,227,161,0.1);">
-        <span class="issue-badge" style="background:var(--success); color:#1e1e2e;">연결 성공</span>
-        <div class="issue-msg">액세스 토큰 발급 완료</div>
-        <div class="issue-suggestion">Token: ${data.access_token.substring(0, 20)}...</div>
+      <div class="issue-item" style="border-color:var(--success);background:rgba(166,227,161,0.1);">
+        <span class="issue-badge" style="background:var(--success);color:#1e1e2e;">연결 성공</span>
+        <div class="issue-msg">액세스 토큰 발급 완료 ${useShared ? '— 공유 적용 (양쪽 탭)' : '— 독립 적용'}</div>
+        <div class="issue-suggestion">Token: ${token.substring(0, 20)}...</div>
       </div>`;
   } catch (err) {
     resultEl.innerHTML = `
       <div class="issue-item error">
         <span class="issue-badge error">연결 실패</span>
         <div class="issue-msg">${err.message}</div>
-        <div class="issue-suggestion">💡 CORS 제한으로 브라우저에서 직접 호출이 차단될 수 있습니다. 아래 안내를 참고하세요.</div>
+        <div class="issue-suggestion">💡 CORS 제한으로 브라우저 직접 호출이 차단될 수 있습니다.</div>
       </div>`;
   }
+}
+
+document.getElementById('tsql-sh-btn').addEventListener('click',  () => connectSFMC('tsql',  true));
+document.getElementById('tsql-own-btn').addEventListener('click', () => connectSFMC('tsql',  false));
+document.getElementById('mysql-sh-btn').addEventListener('click', () => connectSFMC('mysql', true));
+document.getElementById('mysql-own-btn').addEventListener('click',() => connectSFMC('mysql', false));
+
+// ── Snippets ─────────────────────────────────────────────────────
+function insertSnippet(editor, text) {
+  if (!editor) return;
+  const pos = editor.getPosition();
+  editor.executeEdits('snippet', [{ range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column), text }]);
+  editor.focus();
+}
+document.querySelectorAll('.snippet-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const text = SNIPPETS[btn.dataset.e]?.[btn.dataset.k];
+    if (text) insertSnippet(btn.dataset.e === 'tsql' ? tsqlEditor : mysqlEditor, text);
+  });
+});
+
+// ── Render Issues ────────────────────────────────────────────────
+function renderIssues(issues, panelId, successMsg) {
+  const panel = document.getElementById(panelId);
+  if (issues.length === 0) {
+    panel.innerHTML = `<div class="all-good"><div class="icon">✅</div><div style="font-size:15px;font-weight:600;margin-bottom:4px;">이상 없음</div><div style="color:var(--text-muted);font-size:13px;">${successMsg}</div></div>`;
+    return;
+  }
+  const errors   = issues.filter(i => i.type === 'error');
+  const warnings = issues.filter(i => i.type === 'warning');
+  const infos    = issues.filter(i => i.type === 'info');
+  const summary  = [
+    errors.length   ? `<span style="color:var(--error)">❌ 오류 ${errors.length}건</span>`     : '',
+    warnings.length ? `<span style="color:var(--warning)">⚠️ 경고 ${warnings.length}건</span>` : '',
+    infos.length    ? `<span style="color:var(--info)">ℹ️ 정보 ${infos.length}건</span>`       : '',
+  ].filter(Boolean).join('&nbsp;&nbsp;');
+  const items = (list) => list.map(i => `
+    <div class="issue-item ${i.type}">
+      <span class="issue-badge ${i.type}">${i.type==='error'?'오류':i.type==='warning'?'경고':'정보'}</span>
+      <div class="issue-msg">${i.message}</div>
+      <div class="issue-suggestion">💡 ${i.suggestion}</div>
+    </div>`).join('');
+  panel.innerHTML = `<div class="result-section"><div style="margin-bottom:12px;display:flex;gap:12px;font-size:13px;">${summary}</div>${items(errors)}${items(warnings)}${items(infos)}</div>`;
+}
+
+// ── T-SQL Actions ────────────────────────────────────────────────
+document.getElementById('tsql-btn-validate').addEventListener('click', runTsqlValidate);
+document.getElementById('tsql-btn-clear').addEventListener('click', () => tsqlEditor?.setValue(''));
+document.getElementById('tsql-btn-autofix').addEventListener('click', () => {
+  if (!tsqlEditor) return;
+  const before = tsqlEditor.getValue();
+  const fixed  = autoFix(before);
+  if (fixed === before) { alert('교정할 항목이 없습니다.'); return; }
+  tsqlEditor.setValue(fixed);
+  runTsqlValidate();
+});
+
+function runTsqlValidate() {
+  if (!tsqlEditor) return;
+  renderIssues(validate(tsqlEditor.getValue()), 'tsql-result', 'SFMC T-SQL 규칙 검사를 통과했습니다.');
+}
+
+// ── MySQL Validator ──────────────────────────────────────────────
+function validateMySQL(sql) {
+  const issues = [];
+  if (!sql.trim()) return issues;
+
+  const hasInsert = /\bINSERT\b/i.test(sql);
+  const hasUpdate = /\bUPDATE\b/i.test(sql);
+
+  if (!hasInsert && !hasUpdate)
+    issues.push({ type: 'warning', message: 'INSERT 또는 UPDATE 문이 없습니다.', suggestion: 'Journey Custom Activity MySQL은 레거시 DB에 INSERT/UPDATE하는 용도입니다.' });
+
+  if (hasUpdate && !/\bWHERE\b/i.test(sql))
+    issues.push({ type: 'error', message: 'UPDATE문에 WHERE 절이 없습니다.', suggestion: '조건 없이 UPDATE하면 테이블의 모든 행이 변경됩니다. WHERE 조건을 반드시 추가하세요.' });
+
+  const tsqlFns = [
+    [/\bGETDATE\s*\(\)/i,    'GETDATE()는 T-SQL 함수입니다.',     'MySQL에서는 NOW() 또는 CURRENT_TIMESTAMP()를 사용하세요.'],
+    [/\bISNULL\s*\(/i,       'ISNULL()은 T-SQL 함수입니다.',      'MySQL에서는 IFNULL(col, default) 또는 COALESCE()를 사용하세요.'],
+    [/\bLEN\s*\(/i,          'LEN()은 T-SQL 함수입니다.',         'MySQL에서는 LENGTH() 또는 CHAR_LENGTH()를 사용하세요.'],
+    [/\bDATEADD\s*\(/i,      'DATEADD()는 T-SQL 함수입니다.',     'MySQL에서는 DATE_ADD(date, INTERVAL n unit)을 사용하세요.\n예: DATE_ADD(NOW(), INTERVAL -30 DAY)'],
+    [/\bSTRING_AGG\s*\(/i,   'STRING_AGG()는 T-SQL 함수입니다.', "MySQL에서는 GROUP_CONCAT(col SEPARATOR ',')를 사용하세요."],
+    [/\bCHARINDEX\s*\(/i,    'CHARINDEX()는 T-SQL 함수입니다.',   'MySQL에서는 LOCATE(substr, str) 또는 INSTR(str, substr)을 사용하세요.'],
+    [/\bGETUTCDATE\s*\(\)/i, 'GETUTCDATE()는 T-SQL 함수입니다.', 'MySQL에서는 UTC_TIMESTAMP()를 사용하세요.'],
+    [/\bNVARCHAR\b/i,        'NVARCHAR는 T-SQL 타입입니다.',      'MySQL에서는 VARCHAR 또는 TEXT를 사용하세요.'],
+  ];
+  for (const [p, msg, fix] of tsqlFns)
+    if (p.test(sql)) issues.push({ type: 'error', message: msg, suggestion: fix });
+
+  if (/\bDATEDIFF\s*\(/i.test(sql))
+    issues.push({ type: 'warning', message: 'DATEDIFF() 파라미터 순서가 T-SQL과 MySQL이 다릅니다.', suggestion: 'MySQL: DATEDIFF(end_date, start_date)\nT-SQL: DATEDIFF(unit, start_date, end_date)\n순서를 반드시 확인하세요.' });
+
+  const noVars = sql.replace(/\[\[[\w\s.]+\]\]/g, '');
+  if (/\[[^\]]+\]/.test(noVars))
+    issues.push({ type: 'warning', message: '대괄호([]) 식별자는 T-SQL 방식입니다.', suggestion: 'MySQL에서는 백틱(`)으로 식별자를 감싸세요.\n예: `table_name`, `column_name`' });
+
+  if (/\bSELECT\s+TOP\s+\d+/i.test(sql))
+    issues.push({ type: 'error', message: 'SELECT TOP은 T-SQL 문법입니다.', suggestion: 'MySQL에서는 쿼리 끝에 LIMIT n을 사용하세요.\n예: SELECT col FROM table LIMIT 100' });
+
+  const journeyVars = sql.match(/\[\[[\w\s.]+\]\]/g);
+  if (journeyVars) {
+    const unique = [...new Set(journeyVars)];
+    issues.push({ type: 'info', message: `Journey 변수 ${unique.length}개 감지: ${unique.join(', ')}`, suggestion: 'Journey 실행 시 각 컨택의 실제 값으로 자동 치환됩니다.' });
+  }
+
+  const ins = sql.match(/INSERT\s+INTO\s+[`\w.\s]+\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i);
+  if (ins) {
+    const cols = ins[1].split(',').length, vals = ins[2].split(',').length;
+    if (cols !== vals)
+      issues.push({ type: 'error', message: `컬럼 수(${cols})와 VALUES 수(${vals})가 일치하지 않습니다.`, suggestion: '컬럼과 값의 개수를 맞춰주세요.' });
+  }
+
+  if (sql.trim() && !sql.trim().endsWith(';'))
+    issues.push({ type: 'info', message: '쿼리 끝에 세미콜론(;)이 없습니다.', suggestion: '세미콜론을 추가하면 멀티 쿼리 실행 시 명확합니다.' });
+
+  return issues;
+}
+
+// ── MySQL Actions ────────────────────────────────────────────────
+document.getElementById('mysql-btn-validate').addEventListener('click', runMysqlValidate);
+document.getElementById('mysql-btn-clear').addEventListener('click', () => mysqlEditor?.setValue(''));
+
+function runMysqlValidate() {
+  if (!mysqlEditor) return;
+  renderIssues(validateMySQL(mysqlEditor.getValue()), 'mysql-result', 'MySQL 쿼리 검사를 통과했습니다.');
+}
+
+// ── Modal ────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+// ── Save / Load ──────────────────────────────────────────────────
+let savingMode = 'tsql';
+function storageKey(mode) { return mode === 'tsql' ? 'sfmc_queries' : 'sfmc_mysql_queries'; }
+function getEditor(mode)  { return mode === 'tsql' ? tsqlEditor : mysqlEditor; }
+
+['tsql', 'mysql'].forEach(mode => {
+  document.getElementById(`${mode}-btn-save`).addEventListener('click', () => {
+    savingMode = mode;
+    document.getElementById('save-name').value = '';
+    openModal('save-modal');
+    setTimeout(() => document.getElementById('save-name').focus(), 100);
+  });
+  document.getElementById(`${mode}-btn-load`).addEventListener('click', () => showLoadModal(mode));
+});
+
+function saveQuery() {
+  const name = document.getElementById('save-name').value.trim();
+  if (!name) { document.getElementById('save-name').style.borderColor = 'var(--error)'; return; }
+  const saved = JSON.parse(localStorage.getItem(storageKey(savingMode)) || '{}');
+  saved[name] = { sql: getEditor(savingMode)?.getValue() || '', date: new Date().toLocaleDateString('ko-KR') };
+  localStorage.setItem(storageKey(savingMode), JSON.stringify(saved));
+  closeModal('save-modal');
+}
+
+function showLoadModal(mode) {
+  const saved = JSON.parse(localStorage.getItem(storageKey(mode)) || '{}');
+  const keys  = Object.keys(saved);
+  const listEl = document.getElementById('saved-list');
+  listEl.innerHTML = keys.length === 0
+    ? '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px;">저장된 쿼리 없음</div>'
+    : keys.map(k => `
+      <div class="saved-item" data-mode="${mode}" data-key="${k}">
+        <div>
+          <div style="font-size:13px;font-weight:500;">${k}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${saved[k].date}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn btn-primary" style="font-size:11px;padding:3px 10px;" onclick="loadQuery(this)">불러오기</button>
+          <button class="btn btn-danger" onclick="deleteQuery(this)">삭제</button>
+        </div>
+      </div>`).join('');
+  openModal('load-modal');
+}
+
+function loadQuery(btn) {
+  const item = btn.closest('.saved-item');
+  const saved = JSON.parse(localStorage.getItem(storageKey(item.dataset.mode)) || '{}');
+  const entry = saved[item.dataset.key];
+  if (entry) { getEditor(item.dataset.mode)?.setValue(entry.sql); closeModal('load-modal'); }
+}
+
+function deleteQuery(btn) {
+  const item  = btn.closest('.saved-item');
+  const saved = JSON.parse(localStorage.getItem(storageKey(item.dataset.mode)) || '{}');
+  delete saved[item.dataset.key];
+  localStorage.setItem(storageKey(item.dataset.mode), JSON.stringify(saved));
+  showLoadModal(item.dataset.mode);
 }
 </script>
 </body>
