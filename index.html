@@ -63,27 +63,47 @@
         <div id="tsql-connect" style="display:none">
           <div class="connect-form">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
+            <div class="field">
+              <label>프록시 URL <small style="color:var(--text-muted);font-weight:400;">(Cloudflare Worker — 팀 공유, worker.js 참고)</small></label>
+              <input class="mock-input" id="tsql-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
+            </div>
             <div class="conn-share-row">
               <label><input type="checkbox" id="tsql-use-shared" checked> 공유 연결 사용</label>
-              <span class="conn-share-hint">MySQL 탭과 연결 정보 공유</span>
+              <span class="conn-share-hint">CustomActivity 탭과 연결 정보 공유</span>
             </div>
             <div id="tsql-shared-form">
               <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
               <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
               <div class="field"><label>Client Secret</label><input class="mock-input" id="tsql-sh-secret" type="password" placeholder="••••••••••••" /></div>
-              <button class="btn btn-primary" id="tsql-sh-btn" style="width:100%;margin-bottom:12px;">연결 테스트 (공유)</button>
+              <button class="btn btn-primary" id="tsql-sh-btn" style="width:100%;margin-bottom:12px;">연결하기 (공유)</button>
             </div>
             <div id="tsql-own-form" style="display:none">
               <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
               <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
               <div class="field"><label>Client Secret</label><input class="mock-input" id="tsql-own-secret" type="password" placeholder="••••••••••••" /></div>
-              <button class="btn btn-primary" id="tsql-own-btn" style="width:100%;margin-bottom:12px;">연결 테스트 (독립)</button>
+              <button class="btn btn-primary" id="tsql-own-btn" style="width:100%;margin-bottom:12px;">연결하기 (독립)</button>
             </div>
             <div id="tsql-conn-result"></div>
-            <div class="cors-notice">
-              <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 제한 안내</p>
-              <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. 로컬 프록시가 필요합니다.</p>
-              <code style="display:block;margin-top:8px;font-size:12px;color:var(--success);font-family:monospace;">npx local-cors-proxy --proxyUrl https://[subdomain].auth.marketingcloudapis.com</code>
+            <div id="tsql-de-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+              <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Data Extension 조회</p>
+              <div class="field">
+                <label>External Key</label>
+                <div style="display:flex;gap:6px;">
+                  <input class="mock-input" id="tsql-de-key" placeholder="DE External Key (예: CONTACT_DE_001)" style="flex:1;" />
+                  <button class="btn btn-primary" id="tsql-de-fetch-btn" style="white-space:nowrap;">조회</button>
+                </div>
+              </div>
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">💡 SFMC → Email Studio → Data Extensions → [DE 선택] → Properties에서 External Key 확인</p>
+              <div id="tsql-de-result"></div>
+            </div>
+            <div class="cors-notice" style="margin-top:14px;">
+              <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 프록시 설정 방법</p>
+              <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
+              <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
+1. workers.cloudflare.com → 무료 계정 생성<br>
+2. "Create a Worker" → worker.js 내용 붙여넣기<br>
+3. 배포 후 URL을 위의 "프록시 URL"에 입력
+              </code>
             </div>
           </div>
         </div>
@@ -161,27 +181,47 @@
         <div id="mysql-connect" style="display:none">
           <div class="connect-form">
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
+            <div class="field">
+              <label>프록시 URL <small style="color:var(--text-muted);font-weight:400;">(Cloudflare Worker — 팀 공유, worker.js 참고)</small></label>
+              <input class="mock-input" id="mysql-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
+            </div>
             <div class="conn-share-row">
               <label><input type="checkbox" id="mysql-use-shared" checked> 공유 연결 사용</label>
-              <span class="conn-share-hint">T-SQL 탭과 연결 정보 공유</span>
+              <span class="conn-share-hint">Automation 탭과 연결 정보 공유</span>
             </div>
             <div id="mysql-shared-form">
               <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
               <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
               <div class="field"><label>Client Secret</label><input class="mock-input" id="mysql-sh-secret" type="password" placeholder="••••••••••••" /></div>
-              <button class="btn btn-primary" id="mysql-sh-btn" style="width:100%;margin-bottom:12px;">연결 테스트 (공유)</button>
+              <button class="btn btn-primary" id="mysql-sh-btn" style="width:100%;margin-bottom:12px;">연결하기 (공유)</button>
             </div>
             <div id="mysql-own-form" style="display:none">
               <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
               <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
               <div class="field"><label>Client Secret</label><input class="mock-input" id="mysql-own-secret" type="password" placeholder="••••••••••••" /></div>
-              <button class="btn btn-primary" id="mysql-own-btn" style="width:100%;margin-bottom:12px;">연결 테스트 (독립)</button>
+              <button class="btn btn-primary" id="mysql-own-btn" style="width:100%;margin-bottom:12px;">연결하기 (독립)</button>
             </div>
             <div id="mysql-conn-result"></div>
-            <div class="cors-notice">
-              <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 제한 안내</p>
-              <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. 로컬 프록시가 필요합니다.</p>
-              <code style="display:block;margin-top:8px;font-size:12px;color:var(--success);font-family:monospace;">npx local-cors-proxy --proxyUrl https://[subdomain].auth.marketingcloudapis.com</code>
+            <div id="mysql-de-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+              <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Data Extension 조회</p>
+              <div class="field">
+                <label>External Key</label>
+                <div style="display:flex;gap:6px;">
+                  <input class="mock-input" id="mysql-de-key" placeholder="DE External Key (예: CONTACT_DE_001)" style="flex:1;" />
+                  <button class="btn btn-primary" id="mysql-de-fetch-btn" style="white-space:nowrap;">조회</button>
+                </div>
+              </div>
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">💡 SFMC → Email Studio → Data Extensions → [DE 선택] → Properties에서 External Key 확인</p>
+              <div id="mysql-de-result"></div>
+            </div>
+            <div class="cors-notice" style="margin-top:14px;">
+              <p style="font-size:12px;color:var(--warning);font-weight:600;margin-bottom:6px;">⚠️ CORS 프록시 설정 방법</p>
+              <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
+              <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
+1. workers.cloudflare.com → 무료 계정 생성<br>
+2. "Create a Worker" → worker.js 내용 붙여넣기<br>
+3. 배포 후 URL을 위의 "프록시 URL"에 입력
+              </code>
             </div>
           </div>
         </div>
@@ -255,10 +295,21 @@ applyTheme();
 
 // ── SFMC State ───────────────────────────────────────────────────
 const sfmc = {
+  proxyUrl: '',
   shared: { subdomain: '', clientId: '', token: null },
   tsql:   { useShared: true, subdomain: '', clientId: '', token: null },
   mysql:  { useShared: true, subdomain: '', clientId: '', token: null },
 };
+
+// localStorage에서 자격증명 복원 (Secret은 저장하지 않음 — 세션마다 재입력)
+(function loadSavedCreds() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('sfmc_creds') || '{}');
+    if (saved.proxyUrl)        sfmc.proxyUrl            = saved.proxyUrl;
+    if (saved.shared?.subdomain) sfmc.shared.subdomain  = saved.shared.subdomain;
+    if (saved.shared?.clientId)  sfmc.shared.clientId   = saved.shared.clientId;
+  } catch {}
+})();
 
 // ── Table Presets ────────────────────────────────────────────────
 const TABLE_PRESETS = {
@@ -527,6 +578,30 @@ function prefillConnectForm(mode) {
   const prefix = useShared ? `${mode}-sh` : `${mode}-own`;
   document.getElementById(`${prefix}-subdomain`).value = data.subdomain || '';
   document.getElementById(`${prefix}-clientid`).value  = data.clientId  || '';
+  document.getElementById(`${mode}-proxy-url`).value   = sfmc.proxyUrl  || '';
+  // 이미 연결된 상태면 DE 패널 표시
+  const token = sfmc.shared.token || sfmc[mode].token;
+  if (token) document.getElementById(`${mode}-de-panel`).style.display = 'block';
+}
+
+// SFMC API 호출 헬퍼 — 프록시 설정 시 X-Sfmc-Target 헤더로 우회
+async function sfmcFetch(targetUrl, options = {}) {
+  const proxy = sfmc.proxyUrl;
+  if (proxy) {
+    const headers = { ...(options.headers || {}), 'X-Sfmc-Target': targetUrl };
+    return fetch(proxy, { ...options, headers });
+  }
+  return fetch(targetUrl, options);
+}
+
+// 자격증명 localStorage 저장 (Secret 제외)
+function saveCreds() {
+  try {
+    localStorage.setItem('sfmc_creds', JSON.stringify({
+      proxyUrl: sfmc.proxyUrl,
+      shared:   { subdomain: sfmc.shared.subdomain, clientId: sfmc.shared.clientId },
+    }));
+  } catch {}
 }
 
 function onShareToggle(mode) {
@@ -541,27 +616,40 @@ document.getElementById('tsql-use-shared').addEventListener('change', () => onSh
 document.getElementById('mysql-use-shared').addEventListener('change', () => onShareToggle('mysql'));
 
 async function connectSFMC(mode, useShared) {
-  const prefix   = useShared ? `${mode}-sh` : `${mode}-own`;
+  const prefix    = useShared ? `${mode}-sh` : `${mode}-own`;
   const subdomain = document.getElementById(`${prefix}-subdomain`).value.trim();
   const clientId  = document.getElementById(`${prefix}-clientid`).value.trim();
   const secret    = document.getElementById(`${prefix}-secret`).value.trim();
   const resultEl  = document.getElementById(`${mode}-conn-result`);
+  const proxyInput = document.getElementById(`${mode}-proxy-url`);
+
+  // 프록시 URL 동기화
+  sfmc.proxyUrl = proxyInput.value.trim().replace(/\/$/, '');
+  // 반대 탭 프록시 URL 필드도 동기화
+  const otherMode = mode === 'tsql' ? 'mysql' : 'tsql';
+  const otherProxy = document.getElementById(`${otherMode}-proxy-url`);
+  if (otherProxy) otherProxy.value = sfmc.proxyUrl;
 
   if (!subdomain || !clientId || !secret) {
-    resultEl.innerHTML = `<div class="issue-item warning"><span class="issue-badge warning">입력 오류</span><div class="issue-msg">모든 필드를 입력해주세요.</div></div>`;
+    resultEl.innerHTML = `<div class="issue-item warning"><span class="issue-badge warning">입력 오류</span><div class="issue-msg">Subdomain / Client ID / Client Secret을 모두 입력해주세요.</div></div>`;
     return;
   }
-  resultEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">⏳ 연결 시도 중...</div>`;
+  resultEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">⏳ 연결 시도 중${sfmc.proxyUrl ? ' (프록시 경유)' : ' (직접)'}...</div>`;
 
   try {
-    const resp = await fetch(`https://${subdomain}.auth.marketingcloudapis.com/v2/token`, {
+    const authUrl = `https://${subdomain}.auth.marketingcloudapis.com/v2/token`;
+    const resp = await sfmcFetch(authUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ grant_type: 'client_credentials', client_id: clientId, client_secret: secret }),
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error(`HTTP ${resp.status}${errText ? ': ' + errText.substring(0, 100) : ''}`);
+    }
     const data  = await resp.json();
     const token = data.access_token;
+    const expIn = data.expires_in ? ` (${Math.round(data.expires_in / 60)}분 유효)` : '';
 
     if (useShared) {
       sfmc.shared.subdomain = subdomain; sfmc.shared.clientId = clientId; sfmc.shared.token = token;
@@ -569,19 +657,26 @@ async function connectSFMC(mode, useShared) {
     } else {
       sfmc[mode].subdomain = subdomain; sfmc[mode].clientId = clientId; sfmc[mode].token = token;
     }
+    saveCreds();
 
     resultEl.innerHTML = `
       <div class="issue-item" style="border-color:var(--success);background:rgba(166,227,161,0.1);">
         <span class="issue-badge" style="background:var(--success);color:#1e1e2e;">연결 성공</span>
-        <div class="issue-msg">액세스 토큰 발급 완료 ${useShared ? '— 공유 적용 (양쪽 탭)' : '— 독립 적용'}</div>
-        <div class="issue-suggestion">Token: ${token.substring(0, 20)}...</div>
+        <div class="issue-msg">${subdomain} — 토큰 발급 완료${expIn} ${useShared ? '<br><small style="color:var(--text-muted)">양쪽 탭에 공유 적용됨</small>' : ''}</div>
+        <div class="issue-suggestion" style="margin-top:4px;">Token: ${token.substring(0, 24)}…</div>
       </div>`;
+
+    // DE 조회 패널 표시 (양쪽 탭)
+    ['tsql', 'mysql'].forEach(m => {
+      const panel = document.getElementById(`${m}-de-panel`);
+      if (panel) panel.style.display = 'block';
+    });
   } catch (err) {
     resultEl.innerHTML = `
       <div class="issue-item error">
         <span class="issue-badge error">연결 실패</span>
         <div class="issue-msg">${err.message}</div>
-        <div class="issue-suggestion">💡 CORS 제한으로 브라우저 직접 호출이 차단될 수 있습니다.</div>
+        <div class="issue-suggestion">💡 ${sfmc.proxyUrl ? '프록시 URL이 올바른지 확인하세요.' : 'CORS 차단 가능성이 높습니다. 프록시 URL을 설정하세요.'}</div>
       </div>`;
   }
 }
@@ -590,6 +685,82 @@ document.getElementById('tsql-sh-btn').addEventListener('click',  () => connectS
 document.getElementById('tsql-own-btn').addEventListener('click', () => connectSFMC('tsql',  false));
 document.getElementById('mysql-sh-btn').addEventListener('click', () => connectSFMC('mysql', true));
 document.getElementById('mysql-own-btn').addEventListener('click',() => connectSFMC('mysql', false));
+
+// ── DE Preview ───────────────────────────────────────────────────
+async function fetchDEPreview(mode) {
+  const keyInput = document.getElementById(`${mode}-de-key`);
+  const resultEl = document.getElementById(`${mode}-de-result`);
+  const key      = keyInput.value.trim();
+  const token    = sfmc.shared.token || sfmc[mode].token;
+  const subdomain = sfmc.shared.subdomain || sfmc[mode].subdomain;
+
+  if (!key) {
+    resultEl.innerHTML = `<p style="color:var(--warning);font-size:12px;padding:8px 0;">DE External Key를 입력하세요.</p>`;
+    return;
+  }
+  if (!token || !subdomain) {
+    resultEl.innerHTML = `<p style="color:var(--error);font-size:12px;padding:8px 0;">먼저 SFMC에 연결하세요.</p>`;
+    return;
+  }
+
+  resultEl.innerHTML = `<p style="color:var(--text-muted);font-size:12px;padding:8px 0;">⏳ 조회 중...</p>`;
+
+  const url = `https://${subdomain}.rest.marketingcloudapis.com/data/v1/customobjectdata/key/${encodeURIComponent(key)}/rowset?$pageSize=10&$page=1`;
+
+  try {
+    const resp = await sfmcFetch(url, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error(`HTTP ${resp.status}${errText ? ': ' + errText.substring(0, 150) : ''}`);
+    }
+    const data = await resp.json();
+    renderDEPreview(resultEl, data, key);
+  } catch (err) {
+    resultEl.innerHTML = `
+      <div class="issue-item error" style="margin-top:8px;">
+        <span class="issue-badge error">조회 실패</span>
+        <div class="issue-msg">${err.message}</div>
+      </div>`;
+  }
+}
+
+function renderDEPreview(el, data, deKey) {
+  if (!data.items || data.items.length === 0) {
+    el.innerHTML = `<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px 0;">데이터가 없습니다. External Key를 확인하세요.</p>`;
+    return;
+  }
+
+  const first   = data.items[0];
+  const keyCols = Object.keys(first.keys   || {});
+  const valCols = Object.keys(first.values || {});
+  const columns = [...keyCols, ...valCols];
+  const rows    = data.items.map(item => ({ ...(item.keys || {}), ...(item.values || {}) }));
+
+  const totalCount = data.count != null ? Number(data.count).toLocaleString() : '?';
+
+  el.innerHTML = `
+    <div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">
+      총 <strong style="color:var(--text)">${totalCount}</strong>행 &nbsp;|&nbsp;
+      <strong style="color:var(--text)">${columns.length}</strong>개 컬럼
+      ${keyCols.length ? `&nbsp;|&nbsp; PK: <code style="color:var(--accent)">${keyCols.join(', ')}</code>` : ''}
+    </div>
+    <div class="result-table-wrap" style="max-height:260px;overflow:auto;">
+      <table>
+        <thead><tr>${columns.map(c => `<th style="${keyCols.includes(c) ? 'color:var(--accent)' : ''}">${c}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(row =>
+          `<tr>${columns.map(c => `<td>${row[c] == null ? '<span style="color:var(--text-muted)">NULL</span>' : String(row[c])}</td>`).join('')}</tr>`
+        ).join('')}</tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:8px;word-break:break-all;">
+      컬럼 목록: ${columns.join(', ')}
+    </div>`;
+}
+
+document.getElementById('tsql-de-fetch-btn').addEventListener('click',  () => fetchDEPreview('tsql'));
+document.getElementById('mysql-de-fetch-btn').addEventListener('click', () => fetchDEPreview('mysql'));
 
 // ── Snippets ─────────────────────────────────────────────────────
 function insertSnippet(editor, text) {
