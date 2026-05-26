@@ -484,36 +484,45 @@ INSERT INTO INTRA.CA_SMS_LIST (
   ,'#71-2국내사업결과보고(A)_msg'         -- ← SF_SERVICE_NM  ※ 변경 필요
 )`,
 
-  ca_cmc_target: `INSERT INTO INTRA.CA_CMC_TARGET_LIST (
-  EMACODE,
-  SEQ,
-  NAME,
-  HANDPHONE,
-  LEGACYID,
-  CUSTOMERTYPE,
-  I_SERVICE_MASTER_SEQ,
-  I_SERVICE_ACTION_HIST_SEQ
+  ca_cmc_target: `-- CA_CMC_TARGET_LIST : CMC 발송 대상자 적재
+-- ※ EMACODE · I_SERVICE_MASTER_SEQ · 코드(0073p1) 는 캠페인마다 다름 — 사전 확인 필요
+INSERT INTO INTRA.CA_CMC_TARGET_LIST (
+   EMACODE                   -- 이메일 캠페인 코드 (CMC 시스템)
+  ,SEQ                       -- 대상자 순번 (MAX+1 자동 채번)
+  ,NAME                      -- 후원자 이름 (Journey 변수)
+  ,HANDPHONE                 -- 휴대전화 번호 (E.164 형식)
+  ,LEGACYID                  -- 레거시 후원자 번호
+  ,CUSTOMERTYPE              -- 후원자 유형 (Journey 변수)
+  ,I_SERVICE_MASTER_SEQ      -- 서비스 마스터 번호
+  ,I_SERVICE_ACTION_HIST_SEQ -- 이력 SEQ (YYMMDD 6자리 + 행번호 7자리 + 코드 6자리)
 ) VALUES (
-  '900000021',
-  (SELECT NVL(MAX(SEQ),0) FROM INTRA.CA_CMC_TARGET_LIST WHERE EMACODE = 900000021) + 1,
-  '[[FirstName]]',
-  '[[FormattedE164PhoneNumber]]',
-  '[[SubscriberKey]]',
-  '[[SUPERSTATE_DV]]',
-  '001405',
-  TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0073p1'
+   '900000021'                            -- ← EMACODE  ※ 변경 필요
+  ,(SELECT NVL(MAX(SEQ), 0)
+      FROM INTRA.CA_CMC_TARGET_LIST
+     WHERE EMACODE = 900000021) + 1       -- ← SEQ  ※ EMACODE 일치 확인
+  ,'[[FirstName]]'                        -- ← NAME
+  ,'[[FormattedE164PhoneNumber]]'         -- ← HANDPHONE
+  ,'[[SubscriberKey]]'                    -- ← LEGACYID
+  ,'[[SUPERSTATE_DV]]'                    -- ← CUSTOMERTYPE
+  ,'001405'                               -- ← I_SERVICE_MASTER_SEQ  ※ 변경 필요
+  ,TO_CHAR(SYSDATE, 'YYMMDD')
+   || LPAD('[[row_num]]', 7, '0')
+   || '0073p1'                            -- ← I_SERVICE_ACTION_HIST_SEQ  ※ 코드 변경 필요
 )`,
 
-  ca_cmc_camp: `UPDATE INTRA.CA_CMC_CAMPAIGN
-   SET TOTALTARGETNUM = (
+  ca_cmc_camp: `-- CA_CMC_CAMPAIGN : CMC 캠페인 대상자 수 갱신
+-- ※ CA_CMC_TARGET_LIST 적재 완료 후 실행할 것
+-- ※ 세 곳의 EMACODE 가 CA_CMC_TARGET_LIST의 EMACODE 와 반드시 일치해야 함
+UPDATE INTRA.CA_CMC_CAMPAIGN
+   SET TOTALTARGETNUM = (               -- 대상자 수: TARGET_LIST에서 COUNT
            SELECT COUNT(SEQ)
              FROM INTRA.CA_CMC_TARGET_LIST
-            WHERE EMACODE = 900000021
+            WHERE EMACODE = 900000021   -- ※ 변경 필요
        ),
-       MODDATE = TO_CHAR(SYSDATE, 'YYYYMMDD'),
-       MODTIME = TO_CHAR(SYSDATE, 'HH24MISS'),
-       MODID = 'CRM'
- WHERE EMACODE = 900000021`,
+       MODDATE = TO_CHAR(SYSDATE, 'YYYYMMDD'), -- 수정일자
+       MODTIME = TO_CHAR(SYSDATE, 'HH24MISS'), -- 수정시각
+       MODID   = 'CRM'                          -- 수정 주체
+ WHERE EMACODE = 900000021              -- ※ 변경 필요`,
 };
 
 // ── Snippets ─────────────────────────────────────────────────────
