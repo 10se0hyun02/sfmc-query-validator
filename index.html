@@ -29,20 +29,8 @@
 
 <!-- ══ T-SQL MODE ══ -->
 <div id="mode-tsql" class="mode-wrap">
-  <div class="tabs">
-    <button class="tab-btn active" data-mode="tsql" data-tab="tsql-result">✅ 검사 결과</button>
-    <button class="tab-btn" data-mode="tsql" data-tab="tsql-connect">🔗 SFMC 연결</button>
-  </div>
   <div class="main">
     <div class="editor-panel">
-      <div class="editor-toolbar">
-        <button class="btn btn-primary" id="tsql-btn-validate">검사하기</button>
-        <button class="btn btn-fix" id="tsql-btn-autofix">🔧 자동 교정</button>
-        <div class="toolbar-sep"></div>
-        <button class="btn btn-secondary" id="tsql-btn-save">💾 저장</button>
-        <button class="btn btn-secondary" id="tsql-btn-load">📂 불러오기</button>
-        <button class="btn btn-secondary" id="tsql-btn-clear">지우기</button>
-      </div>
       <div class="snippet-bar">
         <span class="snippet-label">삽입:</span>
         <button class="snippet-btn" data-e="tsql" data-k="cast">CAST</button>
@@ -52,6 +40,19 @@
       <div id="tsql-editor-container"></div>
     </div>
     <div class="result-panel">
+      <div class="result-header">
+        <div class="result-subtabs">
+          <button class="tab-btn active" data-mode="tsql" data-tab="tsql-result">✅ 검사 결과</button>
+          <button class="tab-btn" data-mode="tsql" data-tab="tsql-connect">🔗 SFMC 연결</button>
+        </div>
+        <div class="result-actions">
+          <button class="btn btn-primary" id="tsql-btn-validate">검사하기</button>
+          <button class="btn btn-fix" id="tsql-btn-autofix">🔧 자동 교정</button>
+          <button class="btn btn-secondary" id="tsql-btn-save">💾 저장</button>
+          <button class="btn btn-secondary" id="tsql-btn-load">📂 불러오기</button>
+          <button class="btn btn-secondary" id="tsql-btn-clear">지우기</button>
+        </div>
+      </div>
       <div class="result-inner">
         <div id="tsql-result">
           <div class="empty-state">
