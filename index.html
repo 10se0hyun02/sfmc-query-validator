@@ -113,8 +113,15 @@
         <button class="snippet-btn" data-e="mysql" data-k="dateadd">DATE_ADD</button>
         <button class="snippet-btn" data-e="mysql" data-k="datediff">DATEDIFF</button>
         <button class="snippet-btn" data-e="mysql" data-k="var">[[변수]]</button>
-        <button class="snippet-btn" data-e="mysql" data-k="insert">INSERT</button>
-        <button class="snippet-btn" data-e="mysql" data-k="update">UPDATE</button>
+      </div>
+      <div class="table-preset-bar">
+        <span class="snippet-label">테이블:</span>
+        <button class="table-preset-btn" data-t="ss_hist"       title="INTRA.SS_SERVICE_ACTION_HIST">SS_HIST</button>
+        <button class="table-preset-btn" data-t="ss_hist_dtl"   title="INTRA.SS_SERVICE_ACTION_HIST_DTL">SS_HIST_DTL</button>
+        <button class="table-preset-btn" data-t="ca_mail"       title="INTRA.CA_MAIL_LIST">CA_MAIL</button>
+        <button class="table-preset-btn" data-t="ca_sms"        title="INTRA.CA_SMS_LIST">CA_SMS</button>
+        <button class="table-preset-btn" data-t="ca_cmc_target" title="INTRA.CA_CMC_TARGET_LIST">CA_CMC_TGT</button>
+        <button class="table-preset-btn" data-t="ca_cmc_camp"   title="INTRA.CA_CMC_CAMPAIGN">CA_CMC_CMP</button>
       </div>
       <div id="mysql-editor-container"></div>
     </div>
@@ -226,6 +233,160 @@ const sfmc = {
   shared: { subdomain: '', clientId: '', token: null },
   tsql:   { useShared: true, subdomain: '', clientId: '', token: null },
   mysql:  { useShared: true, subdomain: '', clientId: '', token: null },
+};
+
+// ── Table Presets ────────────────────────────────────────────────
+const TABLE_PRESETS = {
+  ss_hist: `INSERT INTO INTRA.SS_SERVICE_ACTION_HIST (
+  I_SERVICE_MASTER_SEQ
+  ,I_SERVICE_ACTION_HIST_SEQ
+  ,I_CUST_ID
+  ,I_EXEC_ID
+  ,EXEC_DATE
+  ,YN_SERVICE_DEALYN
+  ,I_INPUT_ID
+  ,REG_DT
+  ,N_INPUT_IP
+  ,SOLCALL_INFO
+) VALUES (
+  '000018'
+  ,TO_CHAR(SYSDATE, 'YYMMDD') || LPAD(INTRA.SEQ_I_SERVICE_ACTION_HIST.NEXTVAL, 7, '0') || '0003p1'
+  ,'[[SubscriberKey]]'
+  ,'CRM'
+  ,TO_CHAR(SYSDATE, 'YYYYMMDD')
+  ,'Y'
+  ,'CRM'
+  ,SYSDATE
+  ,'183.110.239.34'
+  ,'[[CONTEXT_ORIGINAL_JOURNEY_ID]]'
+)`,
+
+  ss_hist_dtl: `INSERT INTO INTRA.SS_SERVICE_ACTION_HIST_DTL (
+  I_SERVICE_MASTER_SEQ,
+  I_SERVICE_ACTION_HIST_SEQ,
+  I_EXEC_ID,
+  EXEC_DATE,
+  YN_SERVICE_DEAL,
+  I_CUST_ID,
+  N_CUST_NAME,
+  SOLCALL_INFO
+) VALUES (
+  '001412',
+  TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0071p2',
+  'CRM',
+  TO_CHAR(SYSDATE, 'YYYYMMDD'),
+  'Y',
+  '[[SubscriberKey]]',
+  '[[FirstName]]',
+  '[[CONTEXT_ORIGINAL_JOURNEY_ID]]'
+)`,
+
+  ca_mail: `INSERT INTO INTRA.CA_MAIL_LIST (
+  SEQ,
+  EMAIL,
+  SENDYN,
+  ENTERDATE,
+  MODIFYDATE,
+  CUST_ID,
+  NAME,
+  USER_ID,
+  I_SERVICE_MASTER_SEQ,
+  I_SERVICE_ACTION_HIST_SEQ,
+  MCE_ED_KEY,
+  MCE_ED_FIELD,
+  SOLCALL_INFO,
+  SF_SERVICE_NM,
+  CMPNCODE
+) VALUES (
+  INTRA.SEQ_CA_MAIL_LIST.NEXTVAL,
+  '[[EmailAddress]]',
+  'Y',
+  SYSDATE,
+  SYSDATE,
+  '[[SubscriberKey]]',
+  '[[FirstName]]',
+  'CRM',
+  '001414',
+  TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0071p2',
+  'APIEvent-9f1bfecf-ba0f-e212-76b3-7453122338ad',
+  '"Data": {"SubscriberKey": "[[SubscriberKey]]","EmailAddress": "[[EmailAddress]]","ServiceCode": "001414","SponsorNumber": "[[SubscriberKey]]","FirstName": "[[FirstName]]"}',
+  '[[CONTEXT_ORIGINAL_JOURNEY_ID]]',
+  '#71-2해외사업결과보고(A)_em',
+  20000881
+)`,
+
+  ca_sms: `INSERT INTO INTRA.CA_SMS_LIST (
+  SN,
+  CHANNEL,
+  PHONE_NUM,
+  SMS_SND_NUM,
+  REQ_DEPT_CD,
+  REQ_USR_ID,
+  REQ_DTM,
+  SMS_SND_YN,
+  SMS_SND_DTM,
+  RSLT_CD,
+  SND_MSG,
+  TMPL_CD,
+  TRAN_STS,
+  SLOT1,
+  SLOT2,
+  TR_TYPE_CD,
+  TYPE,
+  SOLCALL_INFO,
+  SF_SERVICE_NM
+) VALUES (
+  'MNWISE-'|| TO_CHAR(SYSDATE, 'YYYYMMDDHH24') || '0000' ||'-' || '[[SubscriberKey]]' || '-001412' || '+' || TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0071p2',
+  'A',
+  '[[FormattedE164PhoneNumber]]',
+  '15881940',
+  'CRM',
+  'CRM',
+  TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+  'Y',
+  TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+  '0000',
+  '[[FirstName]] 후원자님께 발송되는 메시지 내용을 여기에 입력하세요.',
+  '797860df_202642013215',
+  '2',
+  '[[SubscriberKey]]',
+  '001412' || '+' || TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0071p2',
+  'B',
+  '07',
+  '[[CONTEXT_ORIGINAL_JOURNEY_ID]]',
+  '#71-2국내사업결과보고(A)_msg'
+)`,
+
+  ca_cmc_target: `INSERT INTO INTRA.CA_CMC_TARGET_LIST (
+  EMACODE,
+  SEQ,
+  NAME,
+  HANDPHONE,
+  LEGACYID,
+  CUSTOMERTYPE,
+  I_SERVICE_MASTER_SEQ,
+  I_SERVICE_ACTION_HIST_SEQ
+) VALUES (
+  '900000021',
+  (SELECT NVL(MAX(SEQ),0) FROM INTRA.CA_CMC_TARGET_LIST WHERE EMACODE = 900000021) + 1,
+  '[[FirstName]]',
+  '[[FormattedE164PhoneNumber]]',
+  '[[SubscriberKey]]',
+  '[[SUPERSTATE_DV]]',
+  '001405',
+  TO_CHAR(SYSDATE, 'YYMMDD') || LPAD('[[row_num]]', 7, '0') || '0073p1'
+)`,
+
+  ca_cmc_camp: `UPDATE INTRA.CA_CMC_CAMPAIGN
+   SET TOTALTARGETNUM = (
+           SELECT COUNT(SEQ)
+             FROM INTRA.CA_CMC_TARGET_LIST
+            WHERE EMACODE = 900000021
+       ),
+       MODDATE = TO_CHAR(SYSDATE, 'YYYYMMDD'),
+       MODTIME = TO_CHAR(SYSDATE, 'HH24MISS'),
+       MODID = 'CRM'
+ WHERE EMACODE = 900000021`,
 };
 
 // ── Snippets ─────────────────────────────────────────────────────
@@ -416,6 +577,17 @@ document.querySelectorAll('.snippet-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const text = SNIPPETS[btn.dataset.e]?.[btn.dataset.k];
     if (text) insertSnippet(btn.dataset.e === 'tsql' ? tsqlEditor : mysqlEditor, text);
+  });
+});
+
+document.querySelectorAll('.table-preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const query = TABLE_PRESETS[btn.dataset.t];
+    if (!query || !mysqlEditor) return;
+    mysqlEditor.setValue(query);
+    mysqlEditor.focus();
+    document.querySelectorAll('.table-preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
   });
 });
 

@@ -327,6 +327,33 @@ tr:last-child td { border-bottom: none; }
 /* Toolbar separator */
 .toolbar-sep { width: 1px; background: var(--border); height: 20px; margin: 0 4px; }
 
+/* Table preset bar */
+.table-preset-bar {
+  background: #18182e;
+  border-bottom: 1px solid var(--border);
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+body.light .table-preset-bar { background: #e0e8f4; }
+.table-preset-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.table-preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+.table-preset-btn.active { background: var(--accent); color: #1e1e2e; border-color: var(--accent); font-weight: 600; }
+body.light .table-preset-btn.active { color: #ffffff; }
+
 /* Auto-fix button */
 .btn-fix { background: #313149; color: var(--warning); border: 1px solid var(--warning); }
 .btn-fix:hover { background: rgba(250,179,135,0.15); }
