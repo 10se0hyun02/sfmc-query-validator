@@ -117,6 +117,29 @@ function validate(sql) {
   return results;
 }
 
+function oracleToTsqlFmt(fmt) {
+  return fmt
+    .replace(/YYYY/g, 'yyyy')
+    .replace(/YY/g,   'yy')
+    .replace(/HH24/g, 'HH')
+    .replace(/HH/g,   'hh')
+    .replace(/MI/g,   'mm')
+    .replace(/SS/g,   'ss')
+    .replace(/MM/g,   'MM')
+    .replace(/DD/g,   'dd')
+    .replace(/DAY/g,  'dddd')
+    .replace(/MON/g,  'MMM');
+}
+
+function mysqlToTsqlFmt(fmt) {
+  return fmt
+    .replace(/%Y/g, 'yyyy').replace(/%y/g, 'yy')
+    .replace(/%m/g, 'MM')  .replace(/%d/g, 'dd')
+    .replace(/%H/g, 'HH')  .replace(/%h/g, 'hh')
+    .replace(/%i/g, 'mm')  .replace(/%s/g, 'ss')
+    .replace(/%W/g, 'dddd').replace(/%b/g, 'MMM');
+}
+
 function autoFix(sql) {
   if (!sql || !sql.trim()) return sql;
   let fixed = sql;
@@ -124,11 +147,29 @@ function autoFix(sql) {
   // 백틱 → 대괄호
   fixed = fixed.replace(/`([^`]+)`/g, '[$1]');
 
+  // Oracle SYSDATE → GETDATE()
+  fixed = fixed.replace(/\bSYSDATE\b/gi, 'GETDATE()');
+
   // NOW() → GETDATE()
   fixed = fixed.replace(/\bNOW\s*\(\s*\)/gi, 'GETDATE()');
 
+  // Oracle NVL → ISNULL
+  fixed = fixed.replace(/\bNVL\s*\(/gi, 'ISNULL(');
+
   // IFNULL → ISNULL
   fixed = fixed.replace(/\bIFNULL\s*\(/gi, 'ISNULL(');
+
+  // Oracle TO_CHAR(date, 'fmt') → FORMAT(date, 'tsqlfmt')
+  fixed = fixed.replace(
+    /\bTO_CHAR\s*\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)/gi,
+    (_, expr, fmt) => `FORMAT(${expr.trim()}, '${oracleToTsqlFmt(fmt)}')`
+  );
+
+  // MySQL DATE_FORMAT(date, '%fmt') → FORMAT(date, 'tsqlfmt')
+  fixed = fixed.replace(
+    /\bDATE_FORMAT\s*\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)/gi,
+    (_, expr, fmt) => `FORMAT(${expr.trim()}, '${mysqlToTsqlFmt(fmt)}')`
+  );
 
   // DATE_ADD(date, INTERVAL n UNIT) → DATEADD(UNIT, n, date)
   fixed = fixed.replace(
@@ -152,7 +193,7 @@ function autoFix(sql) {
     }
   }
 
-  // GROUP_CONCAT(col, sep) → STRING_AGG(col, sep)
+  // GROUP_CONCAT → STRING_AGG
   fixed = fixed.replace(
     /\bGROUP_CONCAT\s*\(\s*([^,)]+?)\s*(?:SEPARATOR\s*('(?:[^']|'')*'|"[^"]*"))?\s*\)/gi,
     (_, col, sep) => `STRING_AGG(${col.trim()}, ${sep ? sep : "','})`
@@ -162,8 +203,26 @@ function autoFix(sql) {
   fixed = fixed.replace(/\bCHAR_LENGTH\s*\(/gi, 'LEN(');
   fixed = fixed.replace(/\bLENGTH\s*\(/gi, 'LEN(');
 
-  // LOCATE(substr, str) → CHARINDEX(substr, str)
+  // LOCATE → CHARINDEX
   fixed = fixed.replace(/\bLOCATE\s*\(/gi, 'CHARINDEX(');
+
+  // SUBSTR → SUBSTRING
+  fixed = fixed.replace(/\bSUBSTR\s*\(/gi, 'SUBSTRING(');
+
+  // TRIM(x) → LTRIM(RTRIM(x))
+  fixed = fixed.replace(/\bTRIM\s*\(\s*([^)]+)\s*\)/gi, (_, x) => `LTRIM(RTRIM(${x.trim()}))`);
+
+  // || → + (문자열 연결 연산자)
+  fixed = fixed.replace(/\s*\|\|\s*/g, ' + ');
+
+  // #주석 → -- 주석 (행 시작 기준)
+  fixed = fixed.replace(/^(\s*)#(.*)$/gm, '$1--$2');
+
+  // MOD(a, b) → a % b
+  fixed = fixed.replace(/\bMOD\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)/gi, (_, a, b) => `${a.trim()} % ${b.trim()}`);
+
+  // 말미 세미콜론 제거 (T-SQL Query Activity 불필요)
+  fixed = fixed.replace(/\s*;\s*$/, '');
 
   return fixed;
 }
