@@ -196,7 +196,7 @@ function autoFix(sql) {
   // GROUP_CONCAT → STRING_AGG
   fixed = fixed.replace(
     /\bGROUP_CONCAT\s*\(\s*([^,)]+?)\s*(?:SEPARATOR\s*('(?:[^']|'')*'|"[^"]*"))?\s*\)/gi,
-    (_, col, sep) => `STRING_AGG(${col.trim()}, ${sep ? sep : "','})`
+    (_, col, sep) => 'STRING_AGG(' + col.trim() + ', ' + (sep || "','") + ')'
   );
 
   // CHAR_LENGTH / LENGTH → LEN
