@@ -200,8 +200,13 @@ require(['vs/editor/editor.main'], function () {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'string', foreground: '98c379' },
-      { token: 'string.sql', foreground: '98c379' },
+      { token: 'string',              foreground: '98c379' },
+      { token: 'string.sql',          foreground: '98c379' },
+      { token: 'string.escape',       foreground: '98c379' },
+      { token: 'string.escape.sql',   foreground: '98c379' },
+      { token: 'string.delim',        foreground: '98c379' },
+      { token: 'comment',             foreground: '7f849c' },
+      { token: 'comment.sql',         foreground: '7f849c' },
     ],
     colors: {}
   });
