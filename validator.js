@@ -93,7 +93,64 @@ const SFMC_RULES = [
     id: 'no-print',
     type: 'error',
     message: 'PRINT는 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: 'PRINT를 제거하세요. Query Activity는 콘솔 출력을 지원하지 않습니다.',
     check: (sql) => /\bPRINT\b/i.test(sql),
+  },
+  {
+    id: 'no-transaction',
+    type: 'error',
+    message: 'BEGIN TRAN / COMMIT / ROLLBACK은 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: 'Query Activity는 트랜잭션 제어를 지원하지 않습니다. 단일 SELECT 문만 사용하세요.',
+    check: (sql) => /\b(BEGIN\s+TRAN(SACTION)?|BEGIN\s+TRY|BEGIN\s+CATCH|COMMIT|ROLLBACK|SAVE\s+TRAN(SACTION)?)\b/i.test(sql),
+  },
+  {
+    id: 'no-set-statement',
+    type: 'error',
+    message: 'SET 구문은 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: 'SET NOCOUNT ON 등의 구문을 제거하세요. Query Activity는 단일 SELECT만 실행합니다.',
+    pattern: /^\s*SET\s+(NOCOUNT|QUOTED_IDENTIFIER|ANSI_NULLS|ANSI_PADDING|CONCAT_NULL_YIELDS_NULL|ARITHABORT|ROWCOUNT|TRANSACTION)\b/im,
+  },
+  {
+    id: 'no-use',
+    type: 'error',
+    message: 'USE [데이터베이스] 구문은 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: 'USE 구문을 제거하세요. SFMC Data Extension은 별도 DB 지정 없이 직접 참조합니다.',
+    pattern: /^\s*USE\s+\[?\w/im,
+  },
+  {
+    id: 'no-for-xml-json',
+    type: 'error',
+    message: 'FOR XML / FOR JSON은 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: 'XML/JSON 변환이 필요하면 Script Activity(SSJS)를 활용하세요.',
+    pattern: /\bFOR\s+(XML|JSON)\b/i,
+  },
+  {
+    id: 'no-bulk-insert',
+    type: 'error',
+    message: 'BULK INSERT는 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: '외부 파일 가져오기는 SFMC Import Activity를 사용하세요.',
+    pattern: /^\s*BULK\s+INSERT\b/im,
+  },
+  {
+    id: 'no-waitfor',
+    type: 'error',
+    message: 'WAITFOR는 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: 'Query Activity 실행 시간 제어는 Automation Studio 스케줄로 관리하세요.',
+    pattern: /\bWAITFOR\b/i,
+  },
+  {
+    id: 'no-openquery',
+    type: 'error',
+    message: 'OPENQUERY / OPENROWSET / OPENDATASOURCE는 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: '외부 데이터 소스 직접 접근은 지원되지 않습니다.',
+    pattern: /\b(OPENQUERY|OPENROWSET|OPENDATASOURCE)\b/i,
+  },
+  {
+    id: 'no-raiserror',
+    type: 'error',
+    message: 'RAISERROR / THROW는 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: '오류 처리 구문을 제거하세요. Query Activity는 자체적으로 오류를 Automation Studio에 기록합니다.',
+    pattern: /\b(RAISERROR|THROW)\b/i,
   },
 
   // ════════════════════════════════════════════════════════
@@ -133,6 +190,13 @@ const SFMC_RULES = [
     message: 'SELECT * 는 성능 저하를 유발할 수 있습니다.',
     suggestion: '필요한 컬럼만 명시적으로 지정하세요.\n예) SELECT c.ContactKey, c.Email FROM ...',
     check: (sql) => /\bSELECT\s+(TOP\s+\d+\s+)?\*/i.test(sql),
+  },
+  {
+    id: 'no-hash-comment',
+    type: 'error',
+    message: '# 주석 스타일은 T-SQL에서 지원되지 않습니다.',
+    suggestion: '-- 또는 /* */ 주석을 사용하세요.\n예) -- 이것은 주석입니다\n    /* 블록 주석 */',
+    check: (sql) => /^[ \t]*#(?!\w)/m.test(sql),
   },
 
   // ════════════════════════════════════════════════════════
@@ -207,6 +271,27 @@ const SFMC_RULES = [
     type: 'error',
     message: 'LOCATE() 는 MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
     suggestion: 'CHARINDEX(찾을문자열, 대상문자열) 를 사용하세요.',
+  },
+  {
+    id: 'no-length',
+    pattern: /\bLENGTH\s*\(/i,
+    type: 'error',
+    message: 'LENGTH() 는 MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'LEN() 을 사용하세요.\n예) LEN(Email)',
+  },
+  {
+    id: 'no-substr',
+    pattern: /\bSUBSTR\s*\(/i,
+    type: 'error',
+    message: 'SUBSTR() 는 MySQL/Oracle 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'SUBSTRING(문자열, 시작위치, 길이) 를 사용하세요.\n예) SUBSTRING(Email, 1, 5)',
+  },
+  {
+    id: 'no-mod-func',
+    pattern: /\bMOD\s*\(/i,
+    type: 'error',
+    message: 'MOD() 는 MySQL/Oracle 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: '% 연산자를 사용하세요.\n예) MOD(n, 3) → n % 3',
   },
 
   // ════════════════════════════════════════════════════════
@@ -286,6 +371,13 @@ const SFMC_RULES = [
   // ════════════════════════════════════════════════════════
   // 5. 주의 / 정보
   // ════════════════════════════════════════════════════════
+  {
+    id: 'warn-no-top',
+    type: 'warning',
+    message: 'SELECT TOP N 이 없습니다.',
+    suggestion: 'SFMC는 최대 처리 행 수가 제한됩니다. TOP 을 명시하는 것이 안전합니다.\n예) SELECT TOP 2500000 c.ContactKey, c.Email\nFROM [Contact_DE] c',
+    check: (sql) => /\bSELECT\b/i.test(sql) && !/\bTOP\s+\d+\b/i.test(sql),
+  },
   {
     id: 'datediff-order',
     pattern: /\bDATEDIFF\s*\(/i,

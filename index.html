@@ -1010,7 +1010,7 @@ function renderIssues(issues, panelId, successMsg) {
     <div class="issue-item ${i.type}">
       <span class="issue-badge ${i.type}">${i.type==='error'?'오류':i.type==='warning'?'경고':'정보'}</span>
       <div class="issue-msg">${i.message}</div>
-      <div class="issue-suggestion">💡 ${i.suggestion}</div>
+      ${i.suggestion ? `<div class="issue-suggestion">💡 ${i.suggestion}</div>` : ''}
     </div>`).join('');
   panel.innerHTML = `<div class="result-section"><div style="margin-bottom:12px;display:flex;gap:12px;font-size:13px;">${summary}</div>${items(errors)}${items(warnings)}${items(infos)}</div>`;
 }
