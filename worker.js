@@ -41,13 +41,13 @@ export default {
       return json({ error: `허용된 도메인이 아닙니다: ${targetUrl.hostname}` }, 403, corsHeaders);
     }
 
-    // 프록시 헤더 구성 (민감 헤더 제거)
+    // SFMC에 필요한 헤더만 선택적으로 전달 (브라우저 보안 헤더 제외)
+    const ALLOWED_HEADERS = new Set(['content-type', 'authorization', 'accept', 'accept-encoding']);
     const proxyHeaders = new Headers();
     for (const [key, val] of request.headers) {
-      const lower = key.toLowerCase();
-      if (['x-sfmc-target', 'host', 'origin', 'referer', 'cf-connecting-ip',
-           'cf-ipcountry', 'cf-ray', 'cf-visitor'].includes(lower)) continue;
-      proxyHeaders.set(key, val);
+      if (ALLOWED_HEADERS.has(key.toLowerCase())) {
+        proxyHeaders.set(key, val);
+      }
     }
 
     const isBodyless = ['GET', 'HEAD'].includes(request.method);
