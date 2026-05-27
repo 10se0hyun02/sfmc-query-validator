@@ -707,6 +707,17 @@ require(['vs/editor/editor.main'], function () {
     value: TABLE_PRESETS.ss_hist,
   });
 
+  // gdTsqlEditor: goldendew를 화면 밖 position:fixed로 잠깐 렌더해 크기 확보 후 생성
+  const _gdWrap = document.getElementById('customer-goldendew');
+  _gdWrap.classList.remove('customer-hidden');
+  _gdWrap.style.cssText = 'position:fixed;top:-200vh;left:0;width:100%;height:100%;visibility:hidden;pointer-events:none;';
+  gdTsqlEditor = monaco.editor.create(document.getElementById('gd-tsql-editor-container'), {
+    ...base,
+    value: '-- Goldendew SFMC SQL Query Activity\nSELECT TOP 1000\n    u.ContactKey,\n    u.Email\nFROM [RC_User] u\nWHERE u.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
+  });
+  _gdWrap.style.cssText = '';
+  _gdWrap.classList.add('customer-hidden');
+
   setTimeout(fixStringColor, 400);
 
   monaco.languages.registerCompletionItemProvider('sql', {
@@ -775,32 +786,19 @@ function switchCustomer(customer) {
     el.classList.toggle('customer-hidden', el.id !== `customer-${customer}`);
   });
   if (customer === 'goldendew') {
-    _initGdEditor();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (gdTsqlEditor) {
+          const c = document.getElementById('gd-tsql-editor-container');
+          gdTsqlEditor.layout({ width: c.clientWidth, height: c.clientHeight });
+        }
+      });
+    });
   } else {
     requestAnimationFrame(() => {
       if (activeMode === 'tsql' && tsqlEditor) tsqlEditor.layout();
       else if (mysqlEditor) mysqlEditor.layout();
     });
-  }
-}
-
-function _initGdEditor(retries) {
-  if (retries === undefined) retries = 30;
-  const c = document.getElementById('gd-tsql-editor-container');
-  const w = c.clientWidth, h = c.clientHeight;
-  if (w > 0 && h > 0) {
-    if (!gdTsqlEditor && typeof monaco !== 'undefined' && _monacoBase) {
-      gdTsqlEditor = monaco.editor.create(c, {
-        ..._monacoBase,
-        value: '-- Goldendew SFMC SQL Query Activity\nSELECT TOP 1000\n    u.ContactKey,\n    u.Email\nFROM [RC_User] u\nWHERE u.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
-      });
-      gdTsqlEditor.layout({ width: w, height: h });
-      if (!isLight) setTimeout(fixStringColor, 200);
-    } else if (gdTsqlEditor) {
-      gdTsqlEditor.layout({ width: w, height: h });
-    }
-  } else if (retries > 0) {
-    requestAnimationFrame(() => _initGdEditor(retries - 1));
   }
 }
 
