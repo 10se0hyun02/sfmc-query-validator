@@ -468,32 +468,6 @@ tr:last-child td { border-bottom: none; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* ── Customer tabs ───────────────────────────────────────────────── */
-.customer-tabs {
-  background: var(--surface);
-  border-bottom: 2px solid var(--border);
-  padding: 0 20px;
-  display: flex;
-  flex-shrink: 0;
-}
-.customer-tab {
-  padding: 9px 28px;
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: color 0.15s, border-color 0.15s;
-}
-.customer-tab.active { color: var(--text); border-bottom-color: var(--accent); }
-.customer-tab:hover:not(.active) { color: var(--text); }
-
 /* ── Customer wrapper ─────────────────────────────────────────────── */
 .customer-wrap {
   flex: 1;
@@ -502,13 +476,3 @@ tr:last-child td { border-bottom: none; }
   overflow: hidden;
   min-height: 0;
 }
-.customer-wrap.customer-hidden {
-  flex: 0 0 0 !important;
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Goldendew editor container */
-#gd-tsql-editor-container { flex: 1; }
