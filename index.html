@@ -21,6 +21,15 @@
   </button>
 </div>
 
+<!-- Customer Tabs -->
+<div class="customer-tabs">
+  <button class="customer-tab active" data-customer="chorokusan">🌂 초록우산</button>
+  <button class="customer-tab" data-customer="goldendew">💍 Goldendew</button>
+</div>
+
+<!-- ══ 초록우산 CUSTOMER SECTION ══ -->
+<div id="customer-chorokusan" class="customer-wrap">
+
 <!-- Mode Tabs -->
 <div class="mode-tabs">
   <button class="mode-tab active" data-mode="tsql">🤖 Automation<small>Automation Studio</small></button>
@@ -74,13 +83,6 @@
           </div>
         </div>
         <div id="tsql-connect" style="display:none">
-          <!-- 클라이언트 탭 -->
-          <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:14px;">
-            <button id="tsql-ctab-default" onclick="switchClientTab('tsql','default')" style="flex:1;padding:8px 0;background:none;border:none;border-bottom:2px solid var(--accent);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);">🌂 초록우산</button>
-            <button id="tsql-ctab-goldendew" onclick="switchClientTab('tsql','goldendew')" style="flex:1;padding:8px 0;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:13px;color:var(--text-muted);">💍 Goldendew</button>
-          </div>
-
-          <!-- 초록우산 패널 -->
           <div id="tsql-cpanel-default">
             <div class="connect-form">
               <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
@@ -135,36 +137,6 @@
             </div>
           </div>
 
-          <!-- Goldendew 패널 -->
-          <div id="tsql-cpanel-goldendew" style="display:none">
-            <div class="connect-form">
-              <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">Goldendew MCE 계정으로 연결합니다. <small>(DE 스키마는 연결 전에도 조회 가능)</small></p>
-              <div class="field">
-                <label>프록시 URL</label>
-                <input class="mock-input" id="tsql-gd-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
-              </div>
-              <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-gd-subdomain" /></div>
-              <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-gd-clientid" /></div>
-              <div class="field"><label>Client Secret</label>
-                <input class="mock-input" id="tsql-gd-secret" type="password" placeholder="••••••••••••" />
-              </div>
-              <button class="btn btn-primary" id="tsql-gd-btn" style="width:100%;margin-bottom:12px;">Goldendew 연결하기</button>
-              <div id="tsql-gd-conn-result"></div>
-              <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-                <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Data Extension 조회 <small style="font-weight:400;color:var(--text-muted)">· 스키마 사전 로드됨</small></p>
-                <div class="field" style="position:relative;">
-                  <label>DE명 검색</label>
-                  <input class="mock-input" id="tsql-gd-de-search" placeholder="RC_ 입력하여 검색" autocomplete="off" />
-                  <div id="tsql-gd-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
-                </div>
-                <div style="display:flex;gap:6px;margin-top:6px;">
-                  <input class="mock-input" id="tsql-gd-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
-                  <button class="btn btn-primary" id="tsql-gd-de-fetch-btn" style="white-space:nowrap;">조회</button>
-                </div>
-                <div id="tsql-gd-de-result" style="margin-top:10px;"></div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -239,13 +211,6 @@
           </div>
         </div>
         <div id="mysql-connect" style="display:none">
-          <!-- 클라이언트 탭 -->
-          <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:14px;">
-            <button id="mysql-ctab-default" onclick="switchClientTab('mysql','default')" style="flex:1;padding:8px 0;background:none;border:none;border-bottom:2px solid var(--accent);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);">🌂 초록우산</button>
-            <button id="mysql-ctab-goldendew" onclick="switchClientTab('mysql','goldendew')" style="flex:1;padding:8px 0;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:13px;color:var(--text-muted);">💍 Goldendew</button>
-          </div>
-
-          <!-- 초록우산 패널 -->
           <div id="mysql-cpanel-default">
             <div class="connect-form">
               <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
@@ -300,33 +265,83 @@
             </div>
           </div>
 
-          <!-- Goldendew 패널 -->
-          <div id="mysql-cpanel-goldendew" style="display:none">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#customer-chorokusan -->
+
+<!-- ══ Goldendew CUSTOMER SECTION ══ -->
+<div id="customer-goldendew" class="customer-wrap" style="display:none">
+  <div id="mode-gd-tsql" class="mode-wrap">
+    <div class="action-bar">
+      <button class="btn btn-primary" id="gd-tsql-btn-validate">검증하기</button>
+      <button class="btn btn-fix" id="gd-tsql-btn-autofix">🔧 수정</button>
+      <div class="action-bar-sep"></div>
+      <button class="btn btn-secondary" id="gd-tsql-btn-save">💾 저장</button>
+      <button class="btn btn-secondary" id="gd-tsql-btn-load">📂 불러오기</button>
+      <button class="btn btn-ghost" id="gd-tsql-btn-clear">지우기</button>
+    </div>
+    <div class="main">
+      <div class="editor-panel">
+        <div class="snippet-bar">
+          <span class="snippet-label">삽입:</span>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="top">TOP N</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="getdate">GETDATE()</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="dateadd">DATEADD</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="datediff">DATEDIFF</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="datepart">DATEPART</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="format">FORMAT</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="isnull">ISNULL</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="iif">IIF</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="coalesce">COALESCE</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="cast">CAST</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="join">JOIN</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="rownum">ROW_NUMBER</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="stringagg">STRING_AGG</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="cte">WITH CTE</button>
+          <button class="snippet-btn" data-e="gd-tsql" data-k="newid">RANDOM</button>
+        </div>
+        <div id="gd-tsql-editor-container"></div>
+      </div>
+      <div class="result-panel">
+        <div class="result-header">
+          <div class="result-subtabs">
+            <button class="tab-btn active" data-mode="gd-tsql" data-tab="gd-tsql-result">✅ 검사 결과</button>
+            <button class="tab-btn" data-mode="gd-tsql" data-tab="gd-tsql-connect">🔗 DE 연결</button>
+          </div>
+        </div>
+        <div class="result-inner">
+          <div id="gd-tsql-result">
+            <div class="empty-state"><div class="icon">📝</div><div>SQL을 입력하고 <strong>검증하기</strong>를 클릭하세요</div></div>
+          </div>
+          <div id="gd-tsql-connect" style="display:none">
             <div class="connect-form">
               <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">Goldendew MCE 계정으로 연결합니다. <small>(DE 스키마는 연결 전에도 조회 가능)</small></p>
               <div class="field">
                 <label>프록시 URL</label>
-                <input class="mock-input" id="mysql-gd-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
+                <input class="mock-input" id="gd-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
               </div>
-              <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-gd-subdomain" /></div>
-              <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-gd-clientid" /></div>
+              <div class="field"><label>Subdomain</label><input class="mock-input" id="gd-subdomain" /></div>
+              <div class="field"><label>Client ID</label><input class="mock-input" id="gd-clientid" /></div>
               <div class="field"><label>Client Secret</label>
-                <input class="mock-input" id="mysql-gd-secret" type="password" placeholder="••••••••••••" />
+                <input class="mock-input" id="gd-secret" type="password" placeholder="••••••••••••" />
               </div>
-              <button class="btn btn-primary" id="mysql-gd-btn" style="width:100%;margin-bottom:12px;">Goldendew 연결하기</button>
-              <div id="mysql-gd-conn-result"></div>
+              <button class="btn btn-primary" id="gd-btn" style="width:100%;margin-bottom:12px;">Goldendew 연결하기</button>
+              <div id="gd-conn-result"></div>
               <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
                 <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Data Extension 조회 <small style="font-weight:400;color:var(--text-muted)">· 스키마 사전 로드됨</small></p>
                 <div class="field" style="position:relative;">
                   <label>DE명 검색</label>
-                  <input class="mock-input" id="mysql-gd-de-search" placeholder="RC_ 입력하여 검색" autocomplete="off" />
-                  <div id="mysql-gd-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+                  <input class="mock-input" id="gd-de-search" placeholder="RC_ 입력하여 검색" autocomplete="off" />
+                  <div id="gd-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:6px;">
-                  <input class="mock-input" id="mysql-gd-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
-                  <button class="btn btn-primary" id="mysql-gd-de-fetch-btn" style="white-space:nowrap;">조회</button>
+                  <input class="mock-input" id="gd-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
+                  <button class="btn btn-primary" id="gd-de-fetch-btn" style="white-space:nowrap;">조회</button>
                 </div>
-                <div id="mysql-gd-de-result" style="margin-top:10px;"></div>
+                <div id="gd-de-result" style="margin-top:10px;"></div>
               </div>
             </div>
           </div>
@@ -334,7 +349,7 @@
       </div>
     </div>
   </div>
-</div>
+</div><!-- /#customer-goldendew -->
 
 <!-- 저장 모달 -->
 <div class="modal-overlay" id="save-modal" style="display:none" onclick="closeModal('save-modal')">
@@ -650,7 +665,8 @@ const SNIPPETS = {
 };
 
 // ── Monaco Init ──────────────────────────────────────────────────
-let tsqlEditor, mysqlEditor;
+let tsqlEditor, mysqlEditor, gdTsqlEditor;
+SNIPPETS['gd-tsql'] = SNIPPETS.tsql;
 require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
 require(['vs/editor/editor.main'], function () {
   monaco.editor.defineTheme('custom-dark', {
@@ -681,6 +697,11 @@ require(['vs/editor/editor.main'], function () {
   mysqlEditor = monaco.editor.create(document.getElementById('mysql-editor-container'), {
     ...base,
     value: TABLE_PRESETS.ss_hist,
+  });
+
+  gdTsqlEditor = monaco.editor.create(document.getElementById('gd-tsql-editor-container'), {
+    ...base,
+    value: '-- Goldendew SFMC SQL Query Activity\nSELECT TOP 1000\n    u.ContactKey,\n    u.Email\nFROM [RC_User] u\nWHERE u.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
   });
 
   setTimeout(fixStringColor, 400);
@@ -738,16 +759,38 @@ require(['vs/editor/editor.main'], function () {
   });
 });
 
+// ── Customer Switching ───────────────────────────────────────────
+let activeCustomer = 'chorokusan';
+document.querySelectorAll('.customer-tab').forEach(btn => {
+  btn.addEventListener('click', () => switchCustomer(btn.dataset.customer));
+});
+
+function switchCustomer(customer) {
+  activeCustomer = customer;
+  document.querySelectorAll('.customer-tab').forEach(b => b.classList.toggle('active', b.dataset.customer === customer));
+  document.querySelectorAll('.customer-wrap').forEach(el => {
+    el.style.display = el.id === `customer-${customer}` ? 'flex' : 'none';
+  });
+  setTimeout(() => {
+    if (customer === 'chorokusan') {
+      if (activeMode === 'tsql' && tsqlEditor) tsqlEditor.layout();
+      else if (mysqlEditor) mysqlEditor.layout();
+    } else if (customer === 'goldendew' && gdTsqlEditor) {
+      gdTsqlEditor.layout();
+    }
+  }, 10);
+}
+
 // ── Mode Switching ───────────────────────────────────────────────
 let activeMode = 'tsql';
-document.querySelectorAll('.mode-tab').forEach(btn => {
+document.querySelectorAll('#customer-chorokusan .mode-tab').forEach(btn => {
   btn.addEventListener('click', () => switchMode(btn.dataset.mode));
 });
 
 function switchMode(mode) {
   activeMode = mode;
-  document.querySelectorAll('.mode-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-  document.querySelectorAll('.mode-wrap').forEach(el => {
+  document.querySelectorAll('#customer-chorokusan .mode-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  document.querySelectorAll('#customer-chorokusan .mode-wrap').forEach(el => {
     el.style.display = el.id === `mode-${mode}` ? 'flex' : 'none';
   });
   setTimeout(() => {
@@ -766,7 +809,10 @@ function openSubTab(mode, tabId) {
   [`${mode}-result`, `${mode}-connect`].forEach(id => {
     document.getElementById(id).style.display = id === tabId ? 'block' : 'none';
   });
-  if (tabId === `${mode}-connect`) prefillConnectForm(mode);
+  if (tabId === `${mode}-connect`) {
+    if (mode === 'gd-tsql') prefillGdConnectForm();
+    else prefillConnectForm(mode);
+  }
 }
 
 // ── SFMC Connection ──────────────────────────────────────────────
@@ -987,18 +1033,6 @@ document.addEventListener('click', e => {
 // ── DE List (SOAP) ────────────────────────────────────────────────
 sfmc.deList = [];
 
-// Goldendew DE 목록 미리 설정 (API 연결 없이도 검색 가능)
-if (typeof GOLDENDEW_SCHEMA !== 'undefined') {
-  sfmc.deList = Object.keys(GOLDENDEW_SCHEMA).map(name => ({
-    name,
-    key:  GOLDENDEW_SCHEMA[name].customerKey,
-    desc: 'Goldendew',
-  })).sort((a, b) => a.name.localeCompare(b.name));
-  ['tsql', 'mysql'].forEach(m => {
-    const btn = document.getElementById(`${m}-de-list-btn`);
-    if (btn) btn.textContent = `${sfmc.deList.length}개 (Goldendew)`;
-  });
-}
 
 function extractSoapToken(jwtToken) {
   try {
@@ -1155,7 +1189,8 @@ function insertSnippet(editor, text) {
 document.querySelectorAll('.snippet-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const text = SNIPPETS[btn.dataset.e]?.[btn.dataset.k];
-    if (text) insertSnippet(btn.dataset.e === 'tsql' ? tsqlEditor : mysqlEditor, text);
+    const edMap = { tsql: tsqlEditor, mysql: mysqlEditor, 'gd-tsql': gdTsqlEditor };
+    if (text) insertSnippet(edMap[btn.dataset.e] || tsqlEditor, text);
   });
 });
 
@@ -1193,6 +1228,23 @@ function renderIssues(issues, panelId, successMsg) {
     </div>`).join('');
   panel.innerHTML = `<div class="result-section"><div style="margin-bottom:12px;display:flex;gap:12px;font-size:13px;">${summary}</div>${items(errors)}${items(warnings)}${items(infos)}</div>`;
 }
+
+// ── Goldendew T-SQL Actions ──────────────────────────────────────
+document.getElementById('gd-tsql-btn-validate').addEventListener('click', runGdTsqlValidate);
+document.getElementById('gd-tsql-btn-clear').addEventListener('click', () => gdTsqlEditor?.setValue(''));
+document.getElementById('gd-tsql-btn-autofix').addEventListener('click', () => {
+  if (!gdTsqlEditor) return;
+  const before = gdTsqlEditor.getValue();
+  const result = autoFix(before);
+  if (result.sql === before) { alert('수정할 항목이 없습니다.'); return; }
+  gdTsqlEditor.setValue(result.sql);
+  runGdTsqlValidate();
+  if (result.changes.length) {
+    const panel = document.getElementById('gd-tsql-result');
+    const fixItems = result.changes.map(c => `<div class="issue-item info"><span class="issue-badge info">수정</span><div class="issue-msg">${c}</div></div>`).join('');
+    panel.innerHTML = `<div class="result-section" style="margin-bottom:8px;"><div style="margin-bottom:8px;font-size:13px;color:var(--info);">🔧 ${result.changes.length}건 자동 수정됨</div>${fixItems}</div>` + panel.innerHTML;
+  }
+});
 
 // ── T-SQL Actions ────────────────────────────────────────────────
 document.getElementById('tsql-btn-validate').addEventListener('click', runTsqlValidate);
@@ -1255,6 +1307,13 @@ function runTsqlValidate() {
   const sql    = tsqlEditor.getValue();
   const issues = [...validate(sql), ...checkGoldendewDateColumns(sql)];
   renderIssues(issues, 'tsql-result', 'SFMC T-SQL 규칙 검사를 통과했습니다.');
+}
+
+function runGdTsqlValidate() {
+  if (!gdTsqlEditor) return;
+  const sql    = gdTsqlEditor.getValue();
+  const issues = [...validate(sql), ...checkGoldendewDateColumns(sql)];
+  renderIssues(issues, 'gd-tsql-result', 'SFMC T-SQL 규칙 검사를 통과했습니다.');
 }
 
 // ── MySQL Validator ──────────────────────────────────────────────
@@ -1529,17 +1588,26 @@ function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
 // ── Save / Load ──────────────────────────────────────────────────
 let savingMode = 'tsql';
-function storageKey(mode) { return mode === 'tsql' ? 'sfmc_queries' : 'sfmc_mysql_queries'; }
-function getEditor(mode)  { return mode === 'tsql' ? tsqlEditor : mysqlEditor; }
+function storageKey(mode) {
+  if (mode === 'tsql') return 'sfmc_queries';
+  if (mode === 'gd-tsql') return 'sfmc_gd_queries';
+  return 'sfmc_mysql_queries';
+}
+function getEditor(mode) {
+  if (mode === 'tsql') return tsqlEditor;
+  if (mode === 'gd-tsql') return gdTsqlEditor;
+  return mysqlEditor;
+}
 
-['tsql', 'mysql'].forEach(mode => {
-  document.getElementById(`${mode}-btn-save`).addEventListener('click', () => {
+['tsql', 'mysql', 'gd-tsql'].forEach(mode => {
+  const prefix = mode === 'gd-tsql' ? 'gd-tsql' : mode;
+  document.getElementById(`${prefix}-btn-save`).addEventListener('click', () => {
     savingMode = mode;
     document.getElementById('save-name').value = '';
     openModal('save-modal');
     setTimeout(() => document.getElementById('save-name').focus(), 100);
   });
-  document.getElementById(`${mode}-btn-load`).addEventListener('click', () => showLoadModal(mode));
+  document.getElementById(`${prefix}-btn-load`).addEventListener('click', () => showLoadModal(mode));
 });
 
 function saveQuery() {
@@ -1586,42 +1654,26 @@ function deleteQuery(btn) {
   showLoadModal(item.dataset.mode);
 }
 
-// ── Client Tab (초록우산 / Goldendew) ─────────────────────────────
-function switchClientTab(mode, client) {
-  ['default','goldendew'].forEach(c => {
-    const tab   = document.getElementById(`${mode}-ctab-${c}`);
-    const panel = document.getElementById(`${mode}-cpanel-${c}`);
-    const active = c === client;
-    if (tab) {
-      tab.style.borderBottom = active ? '2px solid var(--accent)' : '2px solid transparent';
-      tab.style.color        = active ? 'var(--accent)' : 'var(--text-muted)';
-      tab.style.fontWeight   = active ? '600' : '400';
-    }
-    if (panel) panel.style.display = active ? 'block' : 'none';
-  });
-  if (client === 'goldendew') prefillGoldendewForm(mode);
-}
-
-function prefillGoldendewForm(mode) {
-  const sub = document.getElementById(`${mode}-gd-subdomain`);
-  const cid = document.getElementById(`${mode}-gd-clientid`);
-  const pxy = document.getElementById(`${mode}-gd-proxy-url`);
+// ── Goldendew Direct Connect (gd-tsql section) ───────────────────
+function prefillGdConnectForm() {
+  const sub = document.getElementById('gd-subdomain');
+  const cid = document.getElementById('gd-clientid');
+  const pxy = document.getElementById('gd-proxy-url');
   if (sub && !sub.value) sub.value = GOLDENDEW_DEFAULTS.subdomain;
   if (cid && !cid.value) cid.value = GOLDENDEW_DEFAULTS.clientId;
   if (pxy && !pxy.value) pxy.value = sfmc.proxyUrl || '';
   if (sfmc.goldendew.token) {
-    const r = document.getElementById(`${mode}-gd-conn-result`);
-    if (r && !r.innerHTML) r.innerHTML = `<div class="issue-item" style="border-color:var(--success);background:rgba(166,227,161,0.1);"><span class="issue-badge" style="background:var(--success);color:#1e1e2e;">연결됨</span><div class="issue-msg">이미 연결된 상태입니다.</div></div>`;
+    const r = document.getElementById('gd-conn-result');
+    if (r && !r.innerHTML.trim()) r.innerHTML = `<div class="issue-item" style="border-color:var(--success);background:rgba(166,227,161,0.1);"><span class="issue-badge" style="background:var(--success);color:#1e1e2e;">연결됨</span><div class="issue-msg">이미 연결된 상태입니다.</div></div>`;
   }
 }
 
-
-async function connectGoldendew(mode) {
-  const subdomain = document.getElementById(`${mode}-gd-subdomain`).value.trim();
-  const clientId  = document.getElementById(`${mode}-gd-clientid`).value.trim();
-  const secret    = document.getElementById(`${mode}-gd-secret`).value.trim();
-  const resultEl  = document.getElementById(`${mode}-gd-conn-result`);
-  const proxy     = document.getElementById(`${mode}-gd-proxy-url`).value.trim().replace(/\/$/, '');
+async function connectGoldendewDirect() {
+  const subdomain = document.getElementById('gd-subdomain').value.trim();
+  const clientId  = document.getElementById('gd-clientid').value.trim();
+  const secret    = document.getElementById('gd-secret').value.trim();
+  const resultEl  = document.getElementById('gd-conn-result');
+  const proxy     = document.getElementById('gd-proxy-url').value.trim().replace(/\/$/, '');
   if (proxy) sfmc.proxyUrl = proxy;
   if (!subdomain || !clientId || !secret) {
     resultEl.innerHTML = `<div class="issue-item warning"><span class="issue-badge warning">입력 오류</span><div class="issue-msg">Subdomain / Client ID / Secret을 모두 입력해주세요.</div></div>`;
@@ -1641,19 +1693,14 @@ async function connectGoldendew(mode) {
     sfmc.goldendew.clientId  = clientId;
     const expIn = data.expires_in ? ` (${Math.round(data.expires_in/60)}분 유효)` : '';
     resultEl.innerHTML = `<div class="issue-item" style="border-color:var(--success);background:rgba(166,227,161,0.1);"><span class="issue-badge" style="background:var(--success);color:#1e1e2e;">연결 성공</span><div class="issue-msg">${subdomain}${expIn}</div></div>`;
-    // 반대 탭에도 동일 상태 표시
-    const other = mode === 'tsql' ? 'mysql' : 'tsql';
-    const otherR = document.getElementById(`${other}-gd-conn-result`);
-    if (otherR) otherR.innerHTML = resultEl.innerHTML;
   } catch (err) {
     resultEl.innerHTML = `<div class="issue-item error"><span class="issue-badge error">연결 실패</span><div class="issue-msg">${err.message}</div></div>`;
   }
 }
 
-// Goldendew DE 검색 (스키마 기반)
-function onGDSearchInput(mode, val) {
-  const suggestEl = document.getElementById(`${mode}-gd-de-suggestions`);
-  const keyInput  = document.getElementById(`${mode}-gd-de-key`);
+function onGdSearchInput(val) {
+  const suggestEl = document.getElementById('gd-de-suggestions');
+  const keyInput  = document.getElementById('gd-de-key');
   val = val.trim();
   if (!val) { suggestEl.style.display = 'none'; return; }
 
@@ -1694,21 +1741,18 @@ function onGDSearchInput(mode, val) {
 
   suggestEl.querySelectorAll('.de-suggest-item').forEach(el => {
     el.addEventListener('click', () => {
-      document.getElementById(`${mode}-gd-de-key`).value    = el.dataset.key;
-      document.getElementById(`${mode}-gd-de-search`).value = el.dataset.name;
+      document.getElementById('gd-de-key').value    = el.dataset.key;
+      document.getElementById('gd-de-search').value = el.dataset.name;
       suggestEl.style.display = 'none';
-      if (sfmc.goldendew.token) {
-        fetchGoldendewPreview(mode);
-      } else {
-        showGoldendewSchema(mode, el.dataset.name);
-      }
+      if (sfmc.goldendew.token) fetchGdPreview();
+      else showGdSchema(el.dataset.name);
     });
   });
   suggestEl.style.display = 'block';
 }
 
-function showGoldendewSchema(mode, deName) {
-  const resultEl = document.getElementById(`${mode}-gd-de-result`);
+function showGdSchema(deName) {
+  const resultEl = document.getElementById('gd-de-result');
   const de = GOLDENDEW_SCHEMA && GOLDENDEW_SCHEMA[deName];
   if (!de) return;
   resultEl.innerHTML = `
@@ -1723,8 +1767,7 @@ function showGoldendewSchema(mode, deName) {
           <tr>
             <td style="color:var(--text-muted)">${i+1}</td>
             <td style="${c.isPrimaryKey ? 'color:var(--accent);font-weight:600' : ''}">${c.name}</td>
-            <td>${c.type}</td>
-            <td style="text-align:right">${c.maxLength}</td>
+            <td>${c.type}</td><td style="text-align:right">${c.maxLength}</td>
             <td style="text-align:center">${c.isPrimaryKey ? '✓' : ''}</td>
             <td style="text-align:center">${c.isRequired ? '✓' : ''}</td>
           </tr>`).join('')}
@@ -1733,49 +1776,34 @@ function showGoldendewSchema(mode, deName) {
     </div>`;
 }
 
-async function fetchGoldendewPreview(mode) {
-  const keyInput  = document.getElementById(`${mode}-gd-de-key`);
-  const resultEl  = document.getElementById(`${mode}-gd-de-result`);
-  const key       = keyInput.value.trim();
-  const deName    = document.getElementById(`${mode}-gd-de-search`).value.trim();
-
+async function fetchGdPreview() {
+  const key     = document.getElementById('gd-de-key').value.trim();
+  const deName  = document.getElementById('gd-de-search').value.trim();
+  const resultEl = document.getElementById('gd-de-result');
   if (!sfmc.goldendew.token) {
-    // 연결 전이면 스키마만 보여줌
-    if (deName && typeof GOLDENDEW_SCHEMA !== 'undefined' && GOLDENDEW_SCHEMA[deName]) {
-      showGoldendewSchema(mode, deName);
-    } else {
-      resultEl.innerHTML = `<p style="color:var(--error);font-size:12px;padding:8px 0;">먼저 Goldendew에 연결하세요.</p>`;
-    }
+    if (deName && typeof GOLDENDEW_SCHEMA !== 'undefined' && GOLDENDEW_SCHEMA[deName]) showGdSchema(deName);
+    else resultEl.innerHTML = `<p style="color:var(--error);font-size:12px;padding:8px 0;">먼저 Goldendew에 연결하세요.</p>`;
     return;
   }
   if (!key) { resultEl.innerHTML = `<p style="color:var(--warning);font-size:12px;padding:8px 0;">DE External Key를 입력하세요.</p>`; return; }
-
   resultEl.innerHTML = `<p style="color:var(--text-muted);font-size:12px;padding:8px 0;">⏳ 조회 중...</p>`;
   const url = `https://${sfmc.goldendew.subdomain}.rest.marketingcloudapis.com/data/v1/customobjectdata/key/${encodeURIComponent(key)}/rowset?$pageSize=10&$page=1`;
   try {
-    const resp = await sfmcFetch(url, {
-      headers: { 'Authorization': `Bearer ${sfmc.goldendew.token}`, 'Content-Type': 'application/json' },
-    });
+    const resp = await sfmcFetch(url, { headers: { 'Authorization': `Bearer ${sfmc.goldendew.token}`, 'Content-Type': 'application/json' } });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    renderDEPreview(resultEl, data, key);
+    renderDEPreview(resultEl, await resp.json(), key);
   } catch (err) {
     resultEl.innerHTML = `<div class="issue-item error" style="margin-top:8px;"><span class="issue-badge error">조회 실패</span><div class="issue-msg">${err.message}</div></div>`;
   }
 }
 
-// Goldendew 이벤트 등록
-['tsql', 'mysql'].forEach(mode => {
-  document.getElementById(`${mode}-gd-btn`).addEventListener('click', () => connectGoldendew(mode));
-  document.getElementById(`${mode}-gd-de-fetch-btn`).addEventListener('click', () => fetchGoldendewPreview(mode));
-  document.getElementById(`${mode}-gd-de-search`).addEventListener('input', e => onGDSearchInput(mode, e.target.value));
-});
+document.getElementById('gd-btn').addEventListener('click', connectGoldendewDirect);
+document.getElementById('gd-de-fetch-btn').addEventListener('click', fetchGdPreview);
+document.getElementById('gd-de-search').addEventListener('input', e => onGdSearchInput(e.target.value));
 document.addEventListener('click', e => {
   if (!e.target.closest('.field')) {
-    ['tsql','mysql'].forEach(m => {
-      const s = document.getElementById(`${m}-gd-de-suggestions`);
-      if (s) s.style.display = 'none';
-    });
+    const s = document.getElementById('gd-de-suggestions');
+    if (s) s.style.display = 'none';
   }
 });
 </script>
