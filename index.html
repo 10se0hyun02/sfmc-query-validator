@@ -28,7 +28,7 @@
 </div>
 
 <!-- ══ 초록우산 CUSTOMER SECTION ══ -->
-<div id="customer-chorokusan" class="customer-wrap" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;">
+<div id="customer-chorokusan" class="customer-wrap">
 
 <!-- Mode Tabs -->
 <div class="mode-tabs">
@@ -273,7 +273,7 @@
 </div><!-- /#customer-chorokusan -->
 
 <!-- ══ Goldendew CUSTOMER SECTION ══ -->
-<div id="customer-goldendew" class="customer-wrap" style="flex:1;display:none;flex-direction:column;overflow:hidden;min-height:0;">
+<div id="customer-goldendew" class="customer-wrap customer-hidden">
 
 <div class="mode-tabs">
   <button class="mode-tab active" data-mode="gd-tsql" style="cursor:default;">🤖 Automation<small>Automation Studio</small></button>
@@ -777,29 +777,21 @@ function switchCustomer(customer) {
   activeCustomer = customer;
   document.querySelectorAll('.customer-tab').forEach(b => b.classList.toggle('active', b.dataset.customer === customer));
   document.querySelectorAll('.customer-wrap').forEach(el => {
-    const active = el.id === `customer-${customer}`;
-    el.style.display        = active ? 'flex' : 'none';
-    el.style.flex           = active ? '1' : '';
-    el.style.flexDirection  = active ? 'column' : '';
-    el.style.overflow       = active ? 'hidden' : '';
-    el.style.minHeight      = active ? '0' : '';
+    el.classList.toggle('customer-hidden', el.id !== `customer-${customer}`);
   });
-  if (customer === 'goldendew') {
-    void document.getElementById('customer-goldendew').offsetHeight;
+  requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+      if (customer === 'goldendew') {
         if (gdTsqlEditor) {
           const c = document.getElementById('gd-tsql-editor-container');
           gdTsqlEditor.layout({ width: c.clientWidth, height: c.clientHeight });
         }
-      });
+      } else {
+        if (activeMode === 'tsql' && tsqlEditor) tsqlEditor.layout();
+        else if (mysqlEditor) mysqlEditor.layout();
+      }
     });
-  } else {
-    setTimeout(() => {
-      if (activeMode === 'tsql' && tsqlEditor) tsqlEditor.layout();
-      else if (mysqlEditor) mysqlEditor.layout();
-    }, 50);
-  }
+  });
 }
 
 // ── Mode Switching ───────────────────────────────────────────────
