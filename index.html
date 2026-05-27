@@ -74,56 +74,96 @@
           </div>
         </div>
         <div id="tsql-connect" style="display:none">
-          <div class="connect-form">
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
-            <div class="field">
-              <label>프록시 URL <small style="color:var(--text-muted);font-weight:400;">(Cloudflare Worker — 팀 공유, worker.js 참고)</small></label>
-              <input class="mock-input" id="tsql-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
-            </div>
-            <div class="conn-share-row">
-              <label><input type="checkbox" id="tsql-use-shared" checked> 공유 연결 사용</label>
-              <span class="conn-share-hint">CustomActivity 탭과 연결 정보 공유</span>
-            </div>
-            <div id="tsql-shared-form">
-              <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
-              <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
-              <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="tsql-sh-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('tsql-sh-secret', this)">기본값</button></div></div>
-              <button class="btn btn-primary" id="tsql-sh-btn" style="width:100%;margin-bottom:12px;">연결하기 (공유)</button>
-            </div>
-            <div id="tsql-own-form" style="display:none">
-              <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
-              <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
-              <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="tsql-own-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('tsql-own-secret', this)">기본값</button></div></div>
-              <button class="btn btn-primary" id="tsql-own-btn" style="width:100%;margin-bottom:12px;">연결하기 (독립)</button>
-            </div>
-            <div id="tsql-conn-result"></div>
-            <div id="tsql-de-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                <p style="font-size:13px;font-weight:600;">Data Extension 조회</p>
-                <button class="btn btn-secondary" id="tsql-de-list-btn" style="font-size:11px;padding:3px 10px;">목록 불러오기</button>
+          <!-- 클라이언트 탭 -->
+          <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:14px;">
+            <button id="tsql-ctab-default" onclick="switchClientTab('tsql','default')" style="flex:1;padding:8px 0;background:none;border:none;border-bottom:2px solid var(--accent);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);">🌱 초록우산</button>
+            <button id="tsql-ctab-goldendew" onclick="switchClientTab('tsql','goldendew')" style="flex:1;padding:8px 0;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:13px;color:var(--text-muted);">🌿 Goldendew</button>
+          </div>
+
+          <!-- 초록우산 패널 -->
+          <div id="tsql-cpanel-default">
+            <div class="connect-form">
+              <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
+              <div class="field">
+                <label>프록시 URL <small style="color:var(--text-muted);font-weight:400;">(Cloudflare Worker — 팀 공유, worker.js 참고)</small></label>
+                <input class="mock-input" id="tsql-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
               </div>
-              <div class="field" style="position:relative;">
-                <label>DE명 / External Key / URL</label>
-                <input class="mock-input" id="tsql-de-search" placeholder="DE 이름 검색 또는 External Key / SFMC URL 붙여넣기" autocomplete="off" />
-                <div id="tsql-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+              <div class="conn-share-row">
+                <label><input type="checkbox" id="tsql-use-shared" checked> 공유 연결 사용</label>
+                <span class="conn-share-hint">CustomActivity 탭과 연결 정보 공유</span>
               </div>
-              <div style="display:flex;gap:6px;margin-top:6px;">
-                <input class="mock-input" id="tsql-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
-                <button class="btn btn-primary" id="tsql-de-fetch-btn" style="white-space:nowrap;">조회</button>
+              <div id="tsql-shared-form">
+                <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
+                <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
+                <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="tsql-sh-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('tsql-sh-secret', this)">기본값</button></div></div>
+                <button class="btn btn-primary" id="tsql-sh-btn" style="width:100%;margin-bottom:12px;">연결하기 (공유)</button>
               </div>
-              <div id="tsql-de-result" style="margin-top:10px;"></div>
-            </div>
-            <details class="cors-notice" style="margin-top:14px;">
-              <summary>⚠️ CORS 프록시 설정 방법</summary>
-              <div class="cors-body">
-                <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
-                <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
+              <div id="tsql-own-form" style="display:none">
+                <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
+                <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
+                <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="tsql-own-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('tsql-own-secret', this)">기본값</button></div></div>
+                <button class="btn btn-primary" id="tsql-own-btn" style="width:100%;margin-bottom:12px;">연결하기 (독립)</button>
+              </div>
+              <div id="tsql-conn-result"></div>
+              <div id="tsql-de-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <p style="font-size:13px;font-weight:600;">Data Extension 조회</p>
+                  <button class="btn btn-secondary" id="tsql-de-list-btn" style="font-size:11px;padding:3px 10px;">목록 불러오기</button>
+                </div>
+                <div class="field" style="position:relative;">
+                  <label>DE명 / External Key / URL</label>
+                  <input class="mock-input" id="tsql-de-search" placeholder="DE 이름 검색 또는 External Key / SFMC URL 붙여넣기" autocomplete="off" />
+                  <div id="tsql-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                  <input class="mock-input" id="tsql-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
+                  <button class="btn btn-primary" id="tsql-de-fetch-btn" style="white-space:nowrap;">조회</button>
+                </div>
+                <div id="tsql-de-result" style="margin-top:10px;"></div>
+              </div>
+              <details class="cors-notice" style="margin-top:14px;">
+                <summary>⚠️ CORS 프록시 설정 방법</summary>
+                <div class="cors-body">
+                  <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
+                  <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
 1. workers.cloudflare.com → 무료 계정 생성<br>
 2. "Create a Worker" → worker.js 내용 붙여넣기<br>
 3. 배포 후 URL을 위의 "프록시 URL"에 입력
-                </code>
+                  </code>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <!-- Goldendew 패널 -->
+          <div id="tsql-cpanel-goldendew" style="display:none">
+            <div class="connect-form">
+              <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">Goldendew MCE 계정으로 연결합니다. <small>(DE 스키마는 연결 전에도 조회 가능)</small></p>
+              <div class="field">
+                <label>프록시 URL</label>
+                <input class="mock-input" id="tsql-gd-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
               </div>
-            </details>
+              <div class="field"><label>Subdomain</label><input class="mock-input" id="tsql-gd-subdomain" /></div>
+              <div class="field"><label>Client ID</label><input class="mock-input" id="tsql-gd-clientid" /></div>
+              <div class="field"><label>Client Secret</label>
+                <input class="mock-input" id="tsql-gd-secret" type="password" placeholder="••••••••••••" />
+              </div>
+              <button class="btn btn-primary" id="tsql-gd-btn" style="width:100%;margin-bottom:12px;">Goldendew 연결하기</button>
+              <div id="tsql-gd-conn-result"></div>
+              <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+                <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Data Extension 조회 <small style="font-weight:400;color:var(--text-muted)">· 스키마 사전 로드됨</small></p>
+                <div class="field" style="position:relative;">
+                  <label>DE명 검색</label>
+                  <input class="mock-input" id="tsql-gd-de-search" placeholder="RC_ 입력하여 검색" autocomplete="off" />
+                  <div id="tsql-gd-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                  <input class="mock-input" id="tsql-gd-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
+                  <button class="btn btn-primary" id="tsql-gd-de-fetch-btn" style="white-space:nowrap;">조회</button>
+                </div>
+                <div id="tsql-gd-de-result" style="margin-top:10px;"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -199,56 +239,96 @@
           </div>
         </div>
         <div id="mysql-connect" style="display:none">
-          <div class="connect-form">
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
-            <div class="field">
-              <label>프록시 URL <small style="color:var(--text-muted);font-weight:400;">(Cloudflare Worker — 팀 공유, worker.js 참고)</small></label>
-              <input class="mock-input" id="mysql-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
-            </div>
-            <div class="conn-share-row">
-              <label><input type="checkbox" id="mysql-use-shared" checked> 공유 연결 사용</label>
-              <span class="conn-share-hint">Automation 탭과 연결 정보 공유</span>
-            </div>
-            <div id="mysql-shared-form">
-              <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
-              <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
-              <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="mysql-sh-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('mysql-sh-secret', this)">기본값</button></div></div>
-              <button class="btn btn-primary" id="mysql-sh-btn" style="width:100%;margin-bottom:12px;">연결하기 (공유)</button>
-            </div>
-            <div id="mysql-own-form" style="display:none">
-              <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
-              <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
-              <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="mysql-own-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('mysql-own-secret', this)">기본값</button></div></div>
-              <button class="btn btn-primary" id="mysql-own-btn" style="width:100%;margin-bottom:12px;">연결하기 (독립)</button>
-            </div>
-            <div id="mysql-conn-result"></div>
-            <div id="mysql-de-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                <p style="font-size:13px;font-weight:600;">Data Extension 조회</p>
-                <button class="btn btn-secondary" id="mysql-de-list-btn" style="font-size:11px;padding:3px 10px;">목록 불러오기</button>
+          <!-- 클라이언트 탭 -->
+          <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:14px;">
+            <button id="mysql-ctab-default" onclick="switchClientTab('mysql','default')" style="flex:1;padding:8px 0;background:none;border:none;border-bottom:2px solid var(--accent);cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);">🌱 초록우산</button>
+            <button id="mysql-ctab-goldendew" onclick="switchClientTab('mysql','goldendew')" style="flex:1;padding:8px 0;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:13px;color:var(--text-muted);">🌿 Goldendew</button>
+          </div>
+
+          <!-- 초록우산 패널 -->
+          <div id="mysql-cpanel-default">
+            <div class="connect-form">
+              <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">SFMC Installed Package의 Client ID / Secret으로 연결하세요.</p>
+              <div class="field">
+                <label>프록시 URL <small style="color:var(--text-muted);font-weight:400;">(Cloudflare Worker — 팀 공유, worker.js 참고)</small></label>
+                <input class="mock-input" id="mysql-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
               </div>
-              <div class="field" style="position:relative;">
-                <label>DE명 / External Key / URL</label>
-                <input class="mock-input" id="mysql-de-search" placeholder="DE 이름 검색 또는 External Key / SFMC URL 붙여넣기" autocomplete="off" />
-                <div id="mysql-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+              <div class="conn-share-row">
+                <label><input type="checkbox" id="mysql-use-shared" checked> 공유 연결 사용</label>
+                <span class="conn-share-hint">Automation 탭과 연결 정보 공유</span>
               </div>
-              <div style="display:flex;gap:6px;margin-top:6px;">
-                <input class="mock-input" id="mysql-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
-                <button class="btn btn-primary" id="mysql-de-fetch-btn" style="white-space:nowrap;">조회</button>
+              <div id="mysql-shared-form">
+                <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-sh-subdomain" placeholder="mc.xxxxxxxx" /></div>
+                <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-sh-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
+                <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="mysql-sh-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('mysql-sh-secret', this)">기본값</button></div></div>
+                <button class="btn btn-primary" id="mysql-sh-btn" style="width:100%;margin-bottom:12px;">연결하기 (공유)</button>
               </div>
-              <div id="mysql-de-result" style="margin-top:10px;"></div>
-            </div>
-            <details class="cors-notice" style="margin-top:14px;">
-              <summary>⚠️ CORS 프록시 설정 방법</summary>
-              <div class="cors-body">
-                <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
-                <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
+              <div id="mysql-own-form" style="display:none">
+                <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-own-subdomain" placeholder="mc.xxxxxxxx" /></div>
+                <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-own-clientid" placeholder="xxxx-xxxx-xxxx-xxxx" /></div>
+                <div class="field"><label>Client Secret</label><div style="display:flex;gap:6px;"><input class="mock-input" id="mysql-own-secret" type="password" placeholder="••••••••••••" style="flex:1;" /><button class="btn btn-secondary" style="font-size:11px;white-space:nowrap;" onclick="toggleDefaultSecret('mysql-own-secret', this)">기본값</button></div></div>
+                <button class="btn btn-primary" id="mysql-own-btn" style="width:100%;margin-bottom:12px;">연결하기 (독립)</button>
+              </div>
+              <div id="mysql-conn-result"></div>
+              <div id="mysql-de-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <p style="font-size:13px;font-weight:600;">Data Extension 조회</p>
+                  <button class="btn btn-secondary" id="mysql-de-list-btn" style="font-size:11px;padding:3px 10px;">목록 불러오기</button>
+                </div>
+                <div class="field" style="position:relative;">
+                  <label>DE명 / External Key / URL</label>
+                  <input class="mock-input" id="mysql-de-search" placeholder="DE 이름 검색 또는 External Key / SFMC URL 붙여넣기" autocomplete="off" />
+                  <div id="mysql-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                  <input class="mock-input" id="mysql-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
+                  <button class="btn btn-primary" id="mysql-de-fetch-btn" style="white-space:nowrap;">조회</button>
+                </div>
+                <div id="mysql-de-result" style="margin-top:10px;"></div>
+              </div>
+              <details class="cors-notice" style="margin-top:14px;">
+                <summary>⚠️ CORS 프록시 설정 방법</summary>
+                <div class="cors-body">
+                  <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-top:6px;">브라우저에서 직접 SFMC API 호출 시 CORS 오류가 발생합니다. <strong>Cloudflare Worker</strong>를 무료로 배포하세요.</p>
+                  <code style="display:block;margin-top:8px;font-size:11px;color:var(--success);font-family:monospace;line-height:1.8;">
 1. workers.cloudflare.com → 무료 계정 생성<br>
 2. "Create a Worker" → worker.js 내용 붙여넣기<br>
 3. 배포 후 URL을 위의 "프록시 URL"에 입력
-                </code>
+                  </code>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <!-- Goldendew 패널 -->
+          <div id="mysql-cpanel-goldendew" style="display:none">
+            <div class="connect-form">
+              <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">Goldendew MCE 계정으로 연결합니다. <small>(DE 스키마는 연결 전에도 조회 가능)</small></p>
+              <div class="field">
+                <label>프록시 URL</label>
+                <input class="mock-input" id="mysql-gd-proxy-url" placeholder="https://sfmc-proxy.yourteam.workers.dev" />
               </div>
-            </details>
+              <div class="field"><label>Subdomain</label><input class="mock-input" id="mysql-gd-subdomain" /></div>
+              <div class="field"><label>Client ID</label><input class="mock-input" id="mysql-gd-clientid" /></div>
+              <div class="field"><label>Client Secret</label>
+                <input class="mock-input" id="mysql-gd-secret" type="password" placeholder="••••••••••••" />
+              </div>
+              <button class="btn btn-primary" id="mysql-gd-btn" style="width:100%;margin-bottom:12px;">Goldendew 연결하기</button>
+              <div id="mysql-gd-conn-result"></div>
+              <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+                <p style="font-size:13px;font-weight:600;margin-bottom:10px;">Data Extension 조회 <small style="font-weight:400;color:var(--text-muted)">· 스키마 사전 로드됨</small></p>
+                <div class="field" style="position:relative;">
+                  <label>DE명 검색</label>
+                  <input class="mock-input" id="mysql-gd-de-search" placeholder="RC_ 입력하여 검색" autocomplete="off" />
+                  <div id="mysql-gd-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                  <input class="mock-input" id="mysql-gd-de-key" placeholder="External Key (자동 입력)" style="flex:1;font-size:12px;" />
+                  <button class="btn btn-primary" id="mysql-gd-de-fetch-btn" style="white-space:nowrap;">조회</button>
+                </div>
+                <div id="mysql-gd-de-result" style="margin-top:10px;"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -329,11 +409,17 @@ const SFMC_DEFAULTS = {
   secret:    ['SFMC_tpzhrxG23v03d8CvIQ8Q','6jmjo0deqrcwiJi4nnw9Hqt6T54rLbC8f6fe932'].join(''),
 };
 
+const GOLDENDEW_DEFAULTS = {
+  subdomain: 'mclqs9cdw4g459qsf8-dyt-6d97y',
+  clientId:  'buibd8ulbgf4629l6a8wtstg',
+};
+
 const sfmc = {
   proxyUrl: SFMC_DEFAULTS.proxyUrl,
-  shared: { subdomain: SFMC_DEFAULTS.subdomain, clientId: SFMC_DEFAULTS.clientId, token: null },
-  tsql:   { useShared: true, subdomain: '', clientId: '', token: null },
-  mysql:  { useShared: true, subdomain: '', clientId: '', token: null },
+  shared:     { subdomain: SFMC_DEFAULTS.subdomain, clientId: SFMC_DEFAULTS.clientId, token: null },
+  tsql:       { useShared: true, subdomain: '', clientId: '', token: null },
+  mysql:      { useShared: true, subdomain: '', clientId: '', token: null },
+  goldendew:  { subdomain: GOLDENDEW_DEFAULTS.subdomain, clientId: GOLDENDEW_DEFAULTS.clientId, token: null },
 };
 
 // localStorage 저장값이 있으면 기본값 위에 덮어씀
@@ -1459,6 +1545,199 @@ function deleteQuery(btn) {
   localStorage.setItem(storageKey(item.dataset.mode), JSON.stringify(saved));
   showLoadModal(item.dataset.mode);
 }
+
+// ── Client Tab (초록우산 / Goldendew) ─────────────────────────────
+function switchClientTab(mode, client) {
+  ['default','goldendew'].forEach(c => {
+    const tab   = document.getElementById(`${mode}-ctab-${c}`);
+    const panel = document.getElementById(`${mode}-cpanel-${c}`);
+    const active = c === client;
+    if (tab) {
+      tab.style.borderBottom = active ? '2px solid var(--accent)' : '2px solid transparent';
+      tab.style.color        = active ? 'var(--accent)' : 'var(--text-muted)';
+      tab.style.fontWeight   = active ? '600' : '400';
+    }
+    if (panel) panel.style.display = active ? 'block' : 'none';
+  });
+  if (client === 'goldendew') prefillGoldendewForm(mode);
+}
+
+function prefillGoldendewForm(mode) {
+  const sub = document.getElementById(`${mode}-gd-subdomain`);
+  const cid = document.getElementById(`${mode}-gd-clientid`);
+  const pxy = document.getElementById(`${mode}-gd-proxy-url`);
+  if (sub && !sub.value) sub.value = GOLDENDEW_DEFAULTS.subdomain;
+  if (cid && !cid.value) cid.value = GOLDENDEW_DEFAULTS.clientId;
+  if (pxy && !pxy.value) pxy.value = sfmc.proxyUrl || '';
+  if (sfmc.goldendew.token) {
+    const r = document.getElementById(`${mode}-gd-conn-result`);
+    if (r && !r.innerHTML) r.innerHTML = `<div class="issue-item" style="border-color:var(--success);background:rgba(166,227,161,0.1);"><span class="issue-badge" style="background:var(--success);color:#1e1e2e;">연결됨</span><div class="issue-msg">이미 연결된 상태입니다.</div></div>`;
+  }
+}
+
+
+async function connectGoldendew(mode) {
+  const subdomain = document.getElementById(`${mode}-gd-subdomain`).value.trim();
+  const clientId  = document.getElementById(`${mode}-gd-clientid`).value.trim();
+  const secret    = document.getElementById(`${mode}-gd-secret`).value.trim();
+  const resultEl  = document.getElementById(`${mode}-gd-conn-result`);
+  const proxy     = document.getElementById(`${mode}-gd-proxy-url`).value.trim().replace(/\/$/, '');
+  if (proxy) sfmc.proxyUrl = proxy;
+  if (!subdomain || !clientId || !secret) {
+    resultEl.innerHTML = `<div class="issue-item warning"><span class="issue-badge warning">입력 오류</span><div class="issue-msg">Subdomain / Client ID / Secret을 모두 입력해주세요.</div></div>`;
+    return;
+  }
+  resultEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">⏳ 연결 시도 중...</div>`;
+  try {
+    const resp = await sfmcFetch(`https://${subdomain}.auth.marketingcloudapis.com/v2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grant_type: 'client_credentials', client_id: clientId, client_secret: secret }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    sfmc.goldendew.token     = data.access_token;
+    sfmc.goldendew.subdomain = subdomain;
+    sfmc.goldendew.clientId  = clientId;
+    const expIn = data.expires_in ? ` (${Math.round(data.expires_in/60)}분 유효)` : '';
+    resultEl.innerHTML = `<div class="issue-item" style="border-color:var(--success);background:rgba(166,227,161,0.1);"><span class="issue-badge" style="background:var(--success);color:#1e1e2e;">연결 성공</span><div class="issue-msg">${subdomain}${expIn}</div></div>`;
+    // 반대 탭에도 동일 상태 표시
+    const other = mode === 'tsql' ? 'mysql' : 'tsql';
+    const otherR = document.getElementById(`${other}-gd-conn-result`);
+    if (otherR) otherR.innerHTML = resultEl.innerHTML;
+  } catch (err) {
+    resultEl.innerHTML = `<div class="issue-item error"><span class="issue-badge error">연결 실패</span><div class="issue-msg">${err.message}</div></div>`;
+  }
+}
+
+// Goldendew DE 검색 (스키마 기반)
+function onGDSearchInput(mode, val) {
+  const suggestEl = document.getElementById(`${mode}-gd-de-suggestions`);
+  const keyInput  = document.getElementById(`${mode}-gd-de-key`);
+  val = val.trim();
+  if (!val) { suggestEl.style.display = 'none'; return; }
+
+  if (val.startsWith('http')) {
+    const extracted = extractKeyFromInput(val);
+    if (extracted) {
+      keyInput.value = extracted;
+      suggestEl.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--success);">✅ External Key 추출: <strong>${extracted}</strong></div>`;
+      suggestEl.style.display = 'block';
+      return;
+    }
+  }
+
+  if (typeof GOLDENDEW_SCHEMA === 'undefined') {
+    suggestEl.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--text-muted);">스키마 로드 안됨</div>`;
+    suggestEl.style.display = 'block';
+    return;
+  }
+
+  const q = val.toLowerCase();
+  const matches = Object.keys(GOLDENDEW_SCHEMA).filter(n => n.toLowerCase().includes(q)).slice(0, 12);
+
+  if (!matches.length) {
+    suggestEl.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--text-muted);">검색 결과 없음</div>`;
+    suggestEl.style.display = 'block';
+    return;
+  }
+
+  suggestEl.innerHTML = matches.map(name => {
+    const de = GOLDENDEW_SCHEMA[name];
+    return `<div class="de-suggest-item" data-key="${de.customerKey}" data-name="${name}"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px;"
+      onmouseover="this.style.background='rgba(137,180,250,0.08)'" onmouseout="this.style.background=''">
+      <div style="font-weight:600;color:var(--text);">${name}</div>
+      <div style="color:var(--text-muted);font-size:11px;font-family:monospace;">${de.columns.length}개 컬럼 · Goldendew</div>
+    </div>`;
+  }).join('');
+
+  suggestEl.querySelectorAll('.de-suggest-item').forEach(el => {
+    el.addEventListener('click', () => {
+      document.getElementById(`${mode}-gd-de-key`).value    = el.dataset.key;
+      document.getElementById(`${mode}-gd-de-search`).value = el.dataset.name;
+      suggestEl.style.display = 'none';
+      if (sfmc.goldendew.token) {
+        fetchGoldendewPreview(mode);
+      } else {
+        showGoldendewSchema(mode, el.dataset.name);
+      }
+    });
+  });
+  suggestEl.style.display = 'block';
+}
+
+function showGoldendewSchema(mode, deName) {
+  const resultEl = document.getElementById(`${mode}-gd-de-result`);
+  const de = GOLDENDEW_SCHEMA && GOLDENDEW_SCHEMA[deName];
+  if (!de) return;
+  resultEl.innerHTML = `
+    <div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">
+      스키마 미리보기 · <strong style="color:var(--text)">${de.columns.length}</strong>개 컬럼
+      <span style="color:var(--warning);margin-left:8px;">※ 실제 데이터는 연결 후 조회</span>
+    </div>
+    <div class="result-table-wrap" style="max-height:260px;overflow:auto;">
+      <table>
+        <thead><tr><th>#</th><th>컬럼명</th><th>타입</th><th>길이</th><th>PK</th><th>필수</th></tr></thead>
+        <tbody>${de.columns.map((c, i) => `
+          <tr>
+            <td style="color:var(--text-muted)">${i+1}</td>
+            <td style="${c.isPrimaryKey ? 'color:var(--accent);font-weight:600' : ''}">${c.name}</td>
+            <td>${c.type}</td>
+            <td style="text-align:right">${c.maxLength}</td>
+            <td style="text-align:center">${c.isPrimaryKey ? '✓' : ''}</td>
+            <td style="text-align:center">${c.isRequired ? '✓' : ''}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function fetchGoldendewPreview(mode) {
+  const keyInput  = document.getElementById(`${mode}-gd-de-key`);
+  const resultEl  = document.getElementById(`${mode}-gd-de-result`);
+  const key       = keyInput.value.trim();
+  const deName    = document.getElementById(`${mode}-gd-de-search`).value.trim();
+
+  if (!sfmc.goldendew.token) {
+    // 연결 전이면 스키마만 보여줌
+    if (deName && typeof GOLDENDEW_SCHEMA !== 'undefined' && GOLDENDEW_SCHEMA[deName]) {
+      showGoldendewSchema(mode, deName);
+    } else {
+      resultEl.innerHTML = `<p style="color:var(--error);font-size:12px;padding:8px 0;">먼저 Goldendew에 연결하세요.</p>`;
+    }
+    return;
+  }
+  if (!key) { resultEl.innerHTML = `<p style="color:var(--warning);font-size:12px;padding:8px 0;">DE External Key를 입력하세요.</p>`; return; }
+
+  resultEl.innerHTML = `<p style="color:var(--text-muted);font-size:12px;padding:8px 0;">⏳ 조회 중...</p>`;
+  const url = `https://${sfmc.goldendew.subdomain}.rest.marketingcloudapis.com/data/v1/customobjectdata/key/${encodeURIComponent(key)}/rowset?$pageSize=10&$page=1`;
+  try {
+    const resp = await sfmcFetch(url, {
+      headers: { 'Authorization': `Bearer ${sfmc.goldendew.token}`, 'Content-Type': 'application/json' },
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    renderDEPreview(resultEl, data, key);
+  } catch (err) {
+    resultEl.innerHTML = `<div class="issue-item error" style="margin-top:8px;"><span class="issue-badge error">조회 실패</span><div class="issue-msg">${err.message}</div></div>`;
+  }
+}
+
+// Goldendew 이벤트 등록
+['tsql', 'mysql'].forEach(mode => {
+  document.getElementById(`${mode}-gd-btn`).addEventListener('click', () => connectGoldendew(mode));
+  document.getElementById(`${mode}-gd-de-fetch-btn`).addEventListener('click', () => fetchGoldendewPreview(mode));
+  document.getElementById(`${mode}-gd-de-search`).addEventListener('input', e => onGDSearchInput(mode, e.target.value));
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.field')) {
+    ['tsql','mysql'].forEach(m => {
+      const s = document.getElementById(`${m}-gd-de-suggestions`);
+      if (s) s.style.display = 'none';
+    });
+  }
+});
 </script>
 </body>
 </html>
