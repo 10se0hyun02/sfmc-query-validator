@@ -776,6 +776,32 @@ function autoFix(sql) {
   apply('CURRENT_TIME → CAST(GETDATE() AS TIME)', () => {
     fixed = fixed.replace(/\bCURRENT_TIME\b/gi, 'CAST(GETDATE() AS TIME)');
   });
+  apply('STR_TO_DATE() → CONVERT(DATE, ...)', () => {
+    const fmtMap = {
+      '%Y-%m-%d':           23,
+      '%Y%m%d':            112,
+      '%d/%m/%Y':          103,
+      '%m/%d/%Y':          101,
+      '%Y-%m-%d %H:%i:%s': 120,
+      '%d-%m-%Y':          105,
+    };
+    fixed = fixed.replace(
+      /\bSTR_TO_DATE\s*\(\s*([^,]+?)\s*,\s*'([^']+)'\s*\)/gi,
+      (_, expr, fmt) => {
+        const style = fmtMap[fmt];
+        return style
+          ? `CONVERT(DATE, ${expr.trim()}, ${style})`
+          : `CONVERT(DATE, ${expr.trim()})`;
+      }
+    );
+  });
+  apply('ILIKE → LIKE', () => {
+    fixed = fixed.replace(/\bILIKE\b/gi, 'LIKE');
+  });
+  apply('CAST(x AS SIGNED/UNSIGNED) → CAST(x AS INT/BIGINT)', () => {
+    fixed = fixed.replace(/\b(CAST\s*\([^)]+\bAS\s+)SIGNED\b/gi, '$1INT');
+    fixed = fixed.replace(/\b(CAST\s*\([^)]+\bAS\s+)UNSIGNED\b/gi, '$1BIGINT');
+  });
   apply('말미 세미콜론 제거', () => {
     fixed = fixed.replace(/\s*;\s*$/, '');
   });
