@@ -503,7 +503,11 @@ tr:last-child td { border-bottom: none; }
   min-height: 0;
 }
 .customer-wrap.customer-hidden {
-  display: none !important;
+  flex: 0 0 0 !important;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Goldendew editor container */

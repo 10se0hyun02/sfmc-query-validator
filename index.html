@@ -791,6 +791,10 @@ function switchCustomer(customer) {
         if (gdTsqlEditor) {
           const c = document.getElementById('gd-tsql-editor-container');
           gdTsqlEditor.layout({ width: c.clientWidth, height: c.clientHeight });
+          // 한 번 더: ResizeObserver 미발동 브라우저 대비
+          setTimeout(() => {
+            gdTsqlEditor.layout({ width: c.clientWidth, height: c.clientHeight });
+          }, 100);
         }
       });
     });
