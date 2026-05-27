@@ -45,9 +45,16 @@
         <button class="snippet-btn" data-e="tsql" data-k="getdate">GETDATE()</button>
         <button class="snippet-btn" data-e="tsql" data-k="dateadd">DATEADD</button>
         <button class="snippet-btn" data-e="tsql" data-k="datediff">DATEDIFF</button>
+        <button class="snippet-btn" data-e="tsql" data-k="datepart">DATEPART</button>
+        <button class="snippet-btn" data-e="tsql" data-k="format">FORMAT</button>
         <button class="snippet-btn" data-e="tsql" data-k="isnull">ISNULL</button>
+        <button class="snippet-btn" data-e="tsql" data-k="iif">IIF</button>
+        <button class="snippet-btn" data-e="tsql" data-k="coalesce">COALESCE</button>
         <button class="snippet-btn" data-e="tsql" data-k="cast">CAST</button>
         <button class="snippet-btn" data-e="tsql" data-k="join">JOIN</button>
+        <button class="snippet-btn" data-e="tsql" data-k="rownum">ROW_NUMBER</button>
+        <button class="snippet-btn" data-e="tsql" data-k="stringagg">STRING_AGG</button>
+        <button class="snippet-btn" data-e="tsql" data-k="cte">WITH CTE</button>
         <button class="snippet-btn" data-e="tsql" data-k="newid">RANDOM</button>
       </div>
       <div id="tsql-editor-container"></div>
@@ -528,14 +535,21 @@ UPDATE INTRA.CA_CMC_CAMPAIGN
 // ── Snippets ─────────────────────────────────────────────────────
 const SNIPPETS = {
   tsql: {
-    top:     'TOP 1000',
-    getdate: 'GETDATE()',
-    dateadd: 'DATEADD(DAY, -30, GETDATE())',
-    datediff:'DATEDIFF(DAY, StartDate, GETDATE())',
-    isnull:  "ISNULL(col, '')",
-    cast:    'CAST(col AS VARCHAR(100))',
-    join:    'LEFT JOIN [DE_Name] alias ON alias.Key = t.Key',
-    newid:   'ABS(CHECKSUM(NEWID())) % 100',
+    top:        'TOP 1000',
+    getdate:    'GETDATE()',
+    dateadd:    'DATEADD(DAY, -30, GETDATE())',
+    datediff:   'DATEDIFF(DAY, StartDate, GETDATE())',
+    isnull:     "ISNULL(col, '')",
+    cast:       'CAST(col AS VARCHAR(100))',
+    join:       'LEFT JOIN [DE_Name] alias ON alias.Key = t.Key',
+    newid:      'ABS(CHECKSUM(NEWID())) % 100',
+    format:     "FORMAT(GETDATE(), 'yyyyMMdd')",
+    iif:        "IIF(col IS NOT NULL, 'Y', 'N')",
+    rownum:     'ROW_NUMBER() OVER (PARTITION BY col ORDER BY col DESC)',
+    coalesce:   "COALESCE(col1, col2, '')",
+    stringagg:  "STRING_AGG(col, ',') WITHIN GROUP (ORDER BY col)",
+    datepart:   'DATEPART(YEAR, GETDATE())',
+    cte:        "WITH cte AS (\n  SELECT col1, col2\n  FROM [DE_Name]\n  WHERE condition\n)\nSELECT TOP 1000 *\nFROM cte",
   },
   mysql: {
     now:     'NOW()',
