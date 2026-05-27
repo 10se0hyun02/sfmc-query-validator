@@ -502,6 +502,13 @@ const SFMC_RULES = [
   // 6. 주의 / 정보
   // ════════════════════════════════════════════════════════
   {
+    id: 'warn-trim',
+    pattern: /\bTRIM\s*\(/i,
+    type: 'warning',
+    message: 'TRIM() 은 SQL Server 2017 미만에서 지원되지 않을 수 있습니다.',
+    suggestion: 'SFMC 환경에 따라 LTRIM(RTRIM(컬럼)) 으로 대체하세요.\n예) TRIM(Email) → LTRIM(RTRIM(Email))',
+  },
+  {
     id: 'warn-no-top',
     type: 'warning',
     message: 'SELECT TOP N 이 없습니다.',
@@ -773,5 +780,5 @@ function autoFix(sql) {
     fixed = fixed.replace(/\s*;\s*$/, '');
   });
 
-  return fixed;
+  return { sql: fixed, changes };
 }

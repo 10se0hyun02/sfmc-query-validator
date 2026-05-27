@@ -1068,10 +1068,16 @@ document.getElementById('tsql-btn-clear').addEventListener('click', () => tsqlEd
 document.getElementById('tsql-btn-autofix').addEventListener('click', () => {
   if (!tsqlEditor) return;
   const before = tsqlEditor.getValue();
-  const fixed  = autoFix(before);
-  if (fixed === before) { alert('수정할 항목이 없습니다.'); return; }
-  tsqlEditor.setValue(fixed);
+  const result = autoFix(before);
+  if (result.sql === before) { alert('수정할 항목이 없습니다.'); return; }
+  tsqlEditor.setValue(result.sql);
   runTsqlValidate();
+  if (result.changes.length) {
+    const panel = document.getElementById('tsql-result');
+    const fixItems = result.changes.map(c => `<div class="issue-item info"><span class="issue-badge info">수정</span><div class="issue-msg">${c}</div></div>`).join('');
+    const fixBlock = `<div class="result-section" style="margin-bottom:8px;"><div style="margin-bottom:8px;font-size:13px;color:var(--info);">🔧 ${result.changes.length}건 자동 수정됨</div>${fixItems}</div>`;
+    panel.innerHTML = fixBlock + panel.innerHTML;
+  }
 });
 
 function runTsqlValidate() {
@@ -1199,7 +1205,7 @@ function oracleToMysqlFmt(fmt) {
 }
 
 function autoFixMySQL(sql) {
-  if (!sql || !sql.trim()) return sql;
+  if (!sql || !sql.trim()) return { sql, changes: [] };
   let fixed = sql;
   const changes = [];
 
@@ -1319,7 +1325,7 @@ function autoFixMySQL(sql) {
     fixed = escapeInlineQuotes(fixed);
   });
 
-  return fixed;
+  return { sql: fixed, changes };
 }
 
 // ── MySQL Actions ────────────────────────────────────────────────
@@ -1328,10 +1334,16 @@ document.getElementById('mysql-btn-clear').addEventListener('click', () => mysql
 document.getElementById('mysql-btn-autofix').addEventListener('click', () => {
   if (!mysqlEditor) return;
   const before = mysqlEditor.getValue();
-  const fixed = autoFixMySQL(before);
-  if (fixed === before) { alert('수정할 항목이 없습니다.'); return; }
-  mysqlEditor.setValue(fixed);
+  const result = autoFixMySQL(before);
+  if (result.sql === before) { alert('수정할 항목이 없습니다.'); return; }
+  mysqlEditor.setValue(result.sql);
   runMysqlValidate();
+  if (result.changes.length) {
+    const panel = document.getElementById('mysql-result');
+    const fixItems = result.changes.map(c => `<div class="issue-item info"><span class="issue-badge info">수정</span><div class="issue-msg">${c}</div></div>`).join('');
+    const fixBlock = `<div class="result-section" style="margin-bottom:8px;"><div style="margin-bottom:8px;font-size:13px;color:var(--info);">🔧 ${result.changes.length}건 자동 수정됨</div>${fixItems}</div>`;
+    panel.innerHTML = fixBlock + panel.innerHTML;
+  }
 });
 
 function runMysqlValidate() {
