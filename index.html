@@ -274,7 +274,7 @@
 
 <!-- ══ Goldendew CUSTOMER SECTION ══ -->
 <div id="customer-goldendew" class="customer-wrap" style="display:none">
-  <div id="mode-gd-tsql" class="mode-wrap">
+  <div id="mode-gd-tsql" class="mode-wrap" style="display:flex">
     <div class="action-bar">
       <button class="btn btn-primary" id="gd-tsql-btn-validate">검증하기</button>
       <button class="btn btn-fix" id="gd-tsql-btn-autofix">🔧 수정</button>
@@ -777,8 +777,9 @@ function switchCustomer(customer) {
       else if (mysqlEditor) mysqlEditor.layout();
     } else if (customer === 'goldendew' && gdTsqlEditor) {
       gdTsqlEditor.layout();
+      setTimeout(() => gdTsqlEditor.layout(), 150);
     }
-  }, 10);
+  }, 50);
 }
 
 // ── Mode Switching ───────────────────────────────────────────────
