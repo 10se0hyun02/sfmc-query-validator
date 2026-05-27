@@ -551,9 +551,10 @@ const SFMC_RULES = [
 function validate(sql) {
   if (!sql || !sql.trim()) return [];
 
-  // Strip single-line comments so annotation labels (e.g. "-- [수정] IFNULL() → ISNULL()")
-  // never trigger false positives when their text matches a rule pattern.
-  const sqlClean = sql.replace(/--[^\n]*/g, '');
+  // Strip comments so annotation labels and commented-out code never trigger false positives.
+  const sqlClean = sql
+    .replace(/\/\*[\s\S]*?\*\//g, '')  // block comments /* */
+    .replace(/--[^\n]*/g, '');          // line comments --
 
   const results = [];
 

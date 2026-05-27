@@ -1070,8 +1070,10 @@ function validateMySQL(sql) {
   const issues = [];
   if (!sql.trim()) return issues;
 
-  // Strip single-line comments so annotation labels never trigger false positives
-  const stripped = sql.replace(/--[^\n]*/g, '');
+  // Strip comments so annotation labels and commented-out code never trigger false positives.
+  const stripped = sql
+    .replace(/\/\*[\s\S]*?\*\//g, '')  // block comments /* */
+    .replace(/--[^\n]*/g, '');          // line comments --
 
   const hasInsert = /\bINSERT\b/i.test(stripped);
   const hasUpdate = /\bUPDATE\b/i.test(stripped);
