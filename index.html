@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SFMC Query Validator</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=3" />
 </head>
 <body>
 
@@ -28,7 +28,7 @@
 </div>
 
 <!-- ══ 초록우산 CUSTOMER SECTION ══ -->
-<div id="customer-chorokusan" class="customer-wrap">
+<div id="customer-chorokusan" class="customer-wrap" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;">
 
 <!-- Mode Tabs -->
 <div class="mode-tabs">
@@ -273,8 +273,8 @@
 </div><!-- /#customer-chorokusan -->
 
 <!-- ══ Goldendew CUSTOMER SECTION ══ -->
-<div id="customer-goldendew" class="customer-wrap" style="display:none">
-  <div id="mode-gd-tsql" class="mode-wrap" style="display:flex">
+<div id="customer-goldendew" class="customer-wrap" style="flex:1;display:none;flex-direction:column;overflow:hidden;min-height:0;">
+  <div id="mode-gd-tsql" class="mode-wrap" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;">
     <div class="action-bar">
       <button class="btn btn-primary" id="gd-tsql-btn-validate">검증하기</button>
       <button class="btn btn-fix" id="gd-tsql-btn-autofix">🔧 수정</button>
@@ -769,7 +769,12 @@ function switchCustomer(customer) {
   activeCustomer = customer;
   document.querySelectorAll('.customer-tab').forEach(b => b.classList.toggle('active', b.dataset.customer === customer));
   document.querySelectorAll('.customer-wrap').forEach(el => {
-    el.style.display = el.id === `customer-${customer}` ? 'flex' : 'none';
+    const active = el.id === `customer-${customer}`;
+    el.style.display        = active ? 'flex' : 'none';
+    el.style.flex           = active ? '1' : '';
+    el.style.flexDirection  = active ? 'column' : '';
+    el.style.overflow       = active ? 'hidden' : '';
+    el.style.minHeight      = active ? '0' : '';
   });
   if (customer === 'goldendew') {
     setTimeout(() => {
