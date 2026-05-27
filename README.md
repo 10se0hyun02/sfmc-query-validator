@@ -16,7 +16,6 @@ Salesforce Marketing Cloud의 **SQL Query Activity(Automation Studio)** 및 **Jo
 sfmc-query-validator/
 ├── index.html            ← 이 파일을 브라우저로 열기
 ├── validator.js          ← SFMC T-SQL / MySQL 규칙 엔진 + 자동수정
-├── goldendew-schema.js   ← Goldendew DE 스키마 사전 정의
 ├── worker.js             ← Cloudflare Worker CORS 프록시 (배포용)
 ├── wrangler.toml         ← Cloudflare Workers 배포 설정
 └── style.css             ← 다크/라이트 테마 스타일
@@ -26,18 +25,7 @@ sfmc-query-validator/
 
 ---
 
-## 고객사 탭
-
-상단에서 고객사를 선택합니다.
-
-| 탭 | 설명 |
-|----|------|
-| 🌂 **초록우산** | Automation Studio T-SQL + Journey CustomActivity MySQL |
-| 💍 **Goldendew** | Automation Studio T-SQL (Goldendew DE 스키마 사전 로드됨) |
-
----
-
-## 초록우산 — 모드 탭
+## 모드 탭
 
 ### 🤖 Automation (T-SQL)
 
@@ -169,17 +157,6 @@ Journey Custom Activity에서 레거시 DB(Oracle → MySQL 연동)로 INSERT/UP
 
 ---
 
-#### Goldendew 전용 검증
-
-Goldendew 탭에서 `Date` 타입 컬럼을 사용할 때 UTC+9 시간대 변환 누락을 검사합니다.
-
-```sql
--- 올바른 변환 형식
-CAST(DATEADD(hour, 15, DateColumn) AS DATE)
-```
-
----
-
 ### 🔧 자동 수정 (Auto-fix)
 
 **수정** 버튼을 클릭하면 감지된 오류를 자동으로 T-SQL(또는 MySQL) 문법으로 변환합니다.
@@ -218,8 +195,7 @@ trailing 콤마 제거, 말미 세미콜론 추가, 작은따옴표 이스케이
 
 **MySQL 스니펫:** `NOW()`, `IFNULL`, `DATE_ADD`, `DATEDIFF`, `[[변수]]`
 
-Monaco Editor에서 SQL 함수명을 타이핑하면 자동완성도 동작합니다.  
-Goldendew 탭에서는 `GOLDENDEW_SCHEMA`에 정의된 DE명과 컬럼명도 자동완성됩니다.
+Monaco Editor에서 SQL 함수명을 타이핑하면 자동완성도 동작합니다.
 
 ---
 
@@ -227,7 +203,7 @@ Goldendew 탭에서는 `GOLDENDEW_SCHEMA`에 정의된 DE명과 컬럼명도 자
 
 **저장** 버튼으로 현재 쿼리에 이름을 붙여 브라우저 `localStorage`에 저장할 수 있습니다.  
 **불러오기** 버튼으로 저장한 쿼리 목록을 확인하고 재사용합니다.  
-T-SQL, MySQL, Goldendew T-SQL 별로 독립적으로 저장됩니다.
+T-SQL, MySQL 별로 독립적으로 저장됩니다.
 
 ---
 
@@ -241,8 +217,7 @@ SFMC Installed Package 자격증명으로 실제 연결을 테스트하고 Data 
 **DE 목록 불러오기:** SOAP API로 계정 내 전체 DE 목록을 로드한 뒤 이름으로 검색합니다.  
 SFMC 관리 페이지 URL을 그대로 붙여넣으면 External Key가 자동 추출됩니다.
 
-**DE 조회:** External Key로 실제 데이터 미리보기(최대 10행)를 확인합니다.  
-Goldendew 탭은 연결 전에도 사전 로드된 스키마로 컬럼 목록을 조회할 수 있습니다.
+**DE 조회:** External Key로 실제 데이터 미리보기(최대 10행)를 확인합니다.
 
 > **CORS 프록시 필요** — 브라우저에서 SFMC API를 직접 호출하면 CORS 오류가 발생합니다.  
 > 팀 공용 Cloudflare Worker를 사용하거나 아래 방법으로 직접 배포하세요.
