@@ -101,21 +101,28 @@ const SFMC_RULES = [
     type: 'error',
     message: 'BEGIN TRAN / COMMIT / ROLLBACK은 SQL Query Activity에서 지원되지 않습니다.',
     suggestion: 'Query Activity는 트랜잭션 제어를 지원하지 않습니다. 단일 SELECT 문만 사용하세요.',
-    check: (sql) => /\b(BEGIN\s+TRAN(SACTION)?|BEGIN\s+TRY|BEGIN\s+CATCH|COMMIT|ROLLBACK|SAVE\s+TRAN(SACTION)?)\b/i.test(sql),
+    pattern: /\b(BEGIN\s+TRAN(SACTION)?|COMMIT|ROLLBACK|SAVE\s+TRAN(SACTION)?)\b/i,
+  },
+  {
+    id: 'no-try-catch',
+    type: 'error',
+    message: 'BEGIN TRY / BEGIN CATCH는 SQL Query Activity에서 지원되지 않습니다.',
+    suggestion: 'Query Activity는 단일 SELECT 문만 실행합니다.',
+    pattern: /\b(BEGIN\s+TRY|BEGIN\s+CATCH|END\s+TRY|END\s+CATCH)\b/i,
   },
   {
     id: 'no-set-statement',
     type: 'error',
     message: 'SET 구문은 SQL Query Activity에서 지원되지 않습니다.',
     suggestion: 'SET NOCOUNT ON 등의 구문을 제거하세요. Query Activity는 단일 SELECT만 실행합니다.',
-    pattern: /^\s*SET\s+(NOCOUNT|QUOTED_IDENTIFIER|ANSI_NULLS|ANSI_PADDING|CONCAT_NULL_YIELDS_NULL|ARITHABORT|ROWCOUNT|TRANSACTION)\b/im,
+    pattern: /^\s*SET\s+(NOCOUNT|QUOTED_IDENTIFIER|ANSI_NULLS|ANSI_PADDING|CONCAT_NULL_YIELDS_NULL|ARITHABORT|ROWCOUNT|TRANSACTION\s+ISOLATION)\b/im,
   },
   {
     id: 'no-use',
     type: 'error',
     message: 'USE [데이터베이스] 구문은 SQL Query Activity에서 지원되지 않습니다.',
     suggestion: 'USE 구문을 제거하세요. SFMC Data Extension은 별도 DB 지정 없이 직접 참조합니다.',
-    pattern: /^\s*USE\s+\[?\w/im,
+    pattern: /^\s*USE\s+[\["\w]/im,
   },
   {
     id: 'no-for-xml-json',
@@ -293,6 +300,41 @@ const SFMC_RULES = [
     message: 'MOD() 는 MySQL/Oracle 함수입니다. T-SQL에서 지원되지 않습니다.',
     suggestion: '% 연산자를 사용하세요.\n예) MOD(n, 3) → n % 3',
   },
+  {
+    id: 'no-ceil',
+    pattern: /\bCEIL\s*\(/i,
+    type: 'error',
+    message: 'CEIL() 는 MySQL/PostgreSQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'CEILING() 을 사용하세요.\n예) CEILING(4.3) → 5',
+  },
+  {
+    id: 'no-if-func',
+    pattern: /\bIF\s*\(/i,
+    type: 'error',
+    message: 'IF() 는 MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: "IIF(조건, 참값, 거짓값) 또는 CASE WHEN 구문을 사용하세요.\n예) IF(Score > 80, '합격', '불합격') → IIF(Score > 80, '합격', '불합격')",
+  },
+  {
+    id: 'no-str-to-date',
+    pattern: /\bSTR_TO_DATE\s*\(/i,
+    type: 'error',
+    message: 'STR_TO_DATE() 는 MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: "CONVERT(DATE, '날짜문자열', 스타일) 또는 CAST('날짜' AS DATE) 를 사용하세요.\n예) CONVERT(DATE, '2024-01-01', 23)",
+  },
+  {
+    id: 'no-timestampdiff',
+    pattern: /\bTIMESTAMPDIFF\s*\(/i,
+    type: 'error',
+    message: 'TIMESTAMPDIFF() 는 MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'DATEDIFF(단위, 시작날짜, 종료날짜) 를 사용하세요.\n예) DATEDIFF(DAY, StartDate, GETDATE())',
+  },
+  {
+    id: 'no-repeat',
+    pattern: /\bREPEAT\s*\(/i,
+    type: 'error',
+    message: 'REPEAT() 는 MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: "REPLICATE(문자열, 반복횟수) 를 사용하세요.\n예) REPLICATE('0', 5)",
+  },
 
   // ════════════════════════════════════════════════════════
   // 4. Oracle 함수/문법 오용
@@ -367,16 +409,104 @@ const SFMC_RULES = [
     message: 'CONNECT BY 는 Oracle 계층 쿼리 문법입니다. T-SQL에서 지원되지 않습니다.',
     suggestion: '재귀 CTE(WITH ... AS)를 사용하세요.',
   },
+  {
+    id: 'no-instr',
+    pattern: /\bINSTR\s*\(/i,
+    type: 'error',
+    message: 'INSTR() 는 Oracle/MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'CHARINDEX(찾을문자열, 대상문자열) 를 사용하세요.\n※ 인수 순서가 반대입니다.\n예) INSTR(str, sub) → CHARINDEX(sub, str)',
+  },
+  {
+    id: 'no-lpad',
+    pattern: /\bLPAD\s*\(/i,
+    type: 'error',
+    message: 'LPAD() 는 Oracle/MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: "RIGHT(REPLICATE(채울문자, 길이) + 문자열, 길이) 패턴을 사용하세요.\n예) LPAD(n, 5, '0') → RIGHT(REPLICATE('0', 5) + CAST(n AS VARCHAR), 5)",
+  },
+  {
+    id: 'no-rpad',
+    pattern: /\bRPAD\s*\(/i,
+    type: 'error',
+    message: 'RPAD() 는 Oracle/MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: "LEFT(문자열 + REPLICATE(채울문자, 길이), 길이) 패턴을 사용하세요.\n예) RPAD(str, 10, ' ') → LEFT(str + REPLICATE(' ', 10), 10)",
+  },
+  {
+    id: 'no-greatest',
+    pattern: /\bGREATEST\s*\(/i,
+    type: 'error',
+    message: 'GREATEST() 는 Oracle/MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'CASE WHEN 또는 IIF() 를 사용하세요.\n예) GREATEST(a, b) → CASE WHEN a > b THEN a ELSE b END',
+  },
+  {
+    id: 'no-least',
+    pattern: /\bLEAST\s*\(/i,
+    type: 'error',
+    message: 'LEAST() 는 Oracle/MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'CASE WHEN 또는 IIF() 를 사용하세요.\n예) LEAST(a, b) → CASE WHEN a < b THEN a ELSE b END',
+  },
 
   // ════════════════════════════════════════════════════════
-  // 5. 주의 / 정보
+  // 5. 크로스-DB 오용 (PostgreSQL 등)
+  // ════════════════════════════════════════════════════════
+  {
+    id: 'no-ilike',
+    pattern: /\bILIKE\b/i,
+    type: 'error',
+    message: 'ILIKE 는 PostgreSQL 연산자입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'T-SQL의 LIKE는 기본적으로 대소문자를 구분하지 않습니다. LIKE 를 사용하세요.',
+  },
+  {
+    id: 'no-extract',
+    pattern: /\bEXTRACT\s*\(\s*(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s+FROM\b/i,
+    type: 'error',
+    message: 'EXTRACT() 는 PostgreSQL/MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'DATEPART(단위, 날짜) 또는 YEAR()/MONTH()/DAY() 를 사용하세요.\n예) EXTRACT(YEAR FROM date) → DATEPART(YEAR, date) 또는 YEAR(date)',
+  },
+  {
+    id: 'no-position',
+    pattern: /\bPOSITION\s*\(/i,
+    type: 'error',
+    message: 'POSITION() 는 PostgreSQL/MySQL 함수입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: "CHARINDEX(찾을문자열, 대상문자열) 를 사용하세요.\n예) POSITION('@' IN Email) → CHARINDEX('@', Email)",
+  },
+  {
+    id: 'no-cast-signed',
+    pattern: /\bCAST\s*\([^)]+\bAS\s+(SIGNED|UNSIGNED)\b/i,
+    type: 'error',
+    message: 'CAST(x AS SIGNED/UNSIGNED) 는 MySQL 문법입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'CAST(x AS INT) 또는 CAST(x AS BIGINT) 를 사용하세요.',
+  },
+  {
+    id: 'no-regexp',
+    pattern: /\s(REGEXP|RLIKE)\s/i,
+    type: 'error',
+    message: 'REGEXP / RLIKE 는 MySQL 정규식 연산자입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'LIKE 패턴 매칭을 사용하거나, Script Activity(SSJS)에서 정규식을 처리하세요.',
+  },
+  {
+    id: 'no-current-date',
+    pattern: /\bCURRENT_DATE\b/i,
+    type: 'error',
+    message: 'CURRENT_DATE 는 MySQL/PostgreSQL 문법입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'CAST(GETDATE() AS DATE) 를 사용하세요.',
+  },
+  {
+    id: 'no-current-time',
+    pattern: /\bCURRENT_TIME\b/i,
+    type: 'error',
+    message: 'CURRENT_TIME 는 MySQL/PostgreSQL 문법입니다. T-SQL에서 지원되지 않습니다.',
+    suggestion: 'CAST(GETDATE() AS TIME) 를 사용하세요.',
+  },
+
+  // ════════════════════════════════════════════════════════
+  // 6. 주의 / 정보
   // ════════════════════════════════════════════════════════
   {
     id: 'warn-no-top',
     type: 'warning',
     message: 'SELECT TOP N 이 없습니다.',
     suggestion: 'SFMC는 최대 처리 행 수가 제한됩니다. TOP 을 명시하는 것이 안전합니다.\n예) SELECT TOP 2500000 c.ContactKey, c.Email\nFROM [Contact_DE] c',
-    check: (sql) => /\bSELECT\b/i.test(sql) && !/\bTOP\s+\d+\b/i.test(sql),
+    check: (sql) => /\bSELECT\b/i.test(sql) && !/\bSELECT\s+TOP\b/i.test(sql),
   },
   {
     id: 'datediff-order',
@@ -607,6 +737,36 @@ function autoFix(sql) {
   });
   apply('MOD() → % 연산자', () => {
     fixed = fixed.replace(/\bMOD\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)/gi, (_, a, b) => `${a.trim()} % ${b.trim()}`);
+  });
+  apply('CEIL() → CEILING()', () => {
+    fixed = fixed.replace(/\bCEIL\s*\(/gi, 'CEILING(');
+  });
+  apply('IF() → IIF()', () => {
+    fixed = fixed.replace(/\bIF\s*\(/gi, 'IIF(');
+  });
+  apply('INSTR() → CHARINDEX() (인수 순서 변환)', () => {
+    fixed = fixed.replace(
+      /\bINSTR\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)/gi,
+      (_, str, sub) => `CHARINDEX(${sub.trim()}, ${str.trim()})`
+    );
+  });
+  apply('EXTRACT() → DATEPART()', () => {
+    fixed = fixed.replace(
+      /\bEXTRACT\s*\(\s*(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s+FROM\s+([^)]+?)\s*\)/gi,
+      (_, unit, date) => `DATEPART(${unit.toUpperCase()}, ${date.trim()})`
+    );
+  });
+  apply('TIMESTAMPDIFF() → DATEDIFF()', () => {
+    fixed = fixed.replace(/\bTIMESTAMPDIFF\s*\(/gi, 'DATEDIFF(');
+  });
+  apply('REPEAT() → REPLICATE()', () => {
+    fixed = fixed.replace(/\bREPEAT\s*\(/gi, 'REPLICATE(');
+  });
+  apply('CURRENT_DATE → CAST(GETDATE() AS DATE)', () => {
+    fixed = fixed.replace(/\bCURRENT_DATE\b/gi, 'CAST(GETDATE() AS DATE)');
+  });
+  apply('CURRENT_TIME → CAST(GETDATE() AS TIME)', () => {
+    fixed = fixed.replace(/\bCURRENT_TIME\b/gi, 'CAST(GETDATE() AS TIME)');
   });
   apply('말미 세미콜론 제거', () => {
     fixed = fixed.replace(/\s*;\s*$/, '');
