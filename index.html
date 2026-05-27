@@ -1212,9 +1212,49 @@ document.getElementById('tsql-btn-autofix').addEventListener('click', () => {
   }
 });
 
+// Goldendew Date 컬럼 시간대 변환 누락 검사
+function checkGoldendewDateColumns(sql) {
+  if (typeof GOLDENDEW_SCHEMA === 'undefined') return [];
+
+  // 주석 제거 후 검사
+  const stripped = sql
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/--[^\n]*/g, '');
+
+  // Date 타입 컬럼 전체 수집 (중복 제거)
+  const dateColumns = new Set();
+  for (const de of Object.values(GOLDENDEW_SCHEMA)) {
+    for (const col of de.columns) {
+      if (col.type === 'Date') dateColumns.add(col.name);
+    }
+  }
+
+  const issues = [];
+  for (const colName of dateColumns) {
+    // 쿼리에 해당 컬럼이 없으면 skip
+    if (!new RegExp(`\\b${colName}\\b`, 'i').test(stripped)) continue;
+
+    // CAST(DATEADD(hour, 15, ColName) AS DATE) 패턴 확인
+    const wrapped = new RegExp(
+      `CAST\\s*\\(\\s*DATEADD\\s*\\(\\s*hour\\s*,\\s*15\\s*,\\s*${colName}\\s*\\)\\s*AS\\s*DATE\\s*\\)`,
+      'i'
+    );
+    if (!wrapped.test(stripped)) {
+      issues.push({
+        type: 'warning',
+        message: `Date 컬럼 [${colName}]에 시간대 변환이 누락됐습니다.`,
+        suggestion: `CAST(DATEADD(hour, 15, ${colName}) AS DATE) 형식으로 감싸주세요.`,
+      });
+    }
+  }
+  return issues;
+}
+
 function runTsqlValidate() {
   if (!tsqlEditor) return;
-  renderIssues(validate(tsqlEditor.getValue()), 'tsql-result', 'SFMC T-SQL 규칙 검사를 통과했습니다.');
+  const sql    = tsqlEditor.getValue();
+  const issues = [...validate(sql), ...checkGoldendewDateColumns(sql)];
+  renderIssues(issues, 'tsql-result', 'SFMC T-SQL 규칙 검사를 통과했습니다.');
 }
 
 // ── MySQL Validator ──────────────────────────────────────────────
