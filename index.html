@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SFMC Query Validator</title>
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=4" />
 </head>
 <body>
 
@@ -275,12 +275,11 @@
 <!-- ══ Goldendew CUSTOMER SECTION ══ -->
 <div id="customer-goldendew" class="customer-wrap" style="flex:1;display:none;flex-direction:column;overflow:hidden;min-height:0;">
 
-<!-- Mode Tabs -->
 <div class="mode-tabs">
-  <button class="mode-tab active" data-mode="gd-tsql">🤖 Automation<small>Automation Studio</small></button>
+  <button class="mode-tab active" data-mode="gd-tsql" style="cursor:default;">🤖 Automation<small>Automation Studio</small></button>
 </div>
 
-  <div id="mode-gd-tsql" class="mode-wrap" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;">
+  <div id="mode-gd-tsql" class="mode-wrap">
     <div class="action-bar">
       <button class="btn btn-primary" id="gd-tsql-btn-validate">검증하기</button>
       <button class="btn btn-fix" id="gd-tsql-btn-autofix">🔧 수정</button>
@@ -783,17 +782,22 @@ function switchCustomer(customer) {
     el.style.minHeight      = active ? '0' : '';
   });
   if (customer === 'goldendew') {
+    // Force synchronous reflow so the flex container has settled dimensions
+    // before Monaco tries to measure it (WebKit/Chrome display:none→flex bug)
+    void document.getElementById('customer-goldendew').offsetHeight;
     setTimeout(() => {
+      void document.getElementById('mode-gd-tsql').offsetHeight;
       if (!gdTsqlEditor && typeof monaco !== 'undefined' && _monacoBase) {
         gdTsqlEditor = monaco.editor.create(
           document.getElementById('gd-tsql-editor-container'),
           { ..._monacoBase, value: '-- Goldendew SFMC SQL Query Activity\nSELECT TOP 1000\n    u.ContactKey,\n    u.Email\nFROM [RC_User] u\nWHERE u.CreatedDate >= DATEADD(DAY, -30, GETDATE())' }
         );
+        setTimeout(() => gdTsqlEditor && gdTsqlEditor.layout(), 100);
         if (!isLight) setTimeout(fixStringColor, 200);
       } else if (gdTsqlEditor) {
         gdTsqlEditor.layout();
       }
-    }, 50);
+    }, 150);
   } else {
     setTimeout(() => {
       if (activeMode === 'tsql' && tsqlEditor) tsqlEditor.layout();
