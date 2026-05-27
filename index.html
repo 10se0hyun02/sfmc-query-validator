@@ -665,7 +665,8 @@ const SNIPPETS = {
 };
 
 // ── Monaco Init ──────────────────────────────────────────────────
-let tsqlEditor, mysqlEditor, gdTsqlEditor;
+let tsqlEditor, mysqlEditor, gdTsqlEditor = null;
+let _monacoBase = null;
 SNIPPETS['gd-tsql'] = SNIPPETS.tsql;
 require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
 require(['vs/editor/editor.main'], function () {
@@ -689,6 +690,8 @@ require(['vs/editor/editor.main'], function () {
     renderLineHighlight: 'all', padding: { top: 12 }, suggestOnTriggerCharacters: true,
   };
 
+  _monacoBase = base;
+
   tsqlEditor = monaco.editor.create(document.getElementById('tsql-editor-container'), {
     ...base,
     value: '-- SFMC SQL Query Activity 예시\n-- Destination DE는 다음 탭에서 선택\nSELECT TOP 1000\n    c.ContactKey,\n    c.Email\nFROM [Contact_DE] c\nWHERE c.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
@@ -699,10 +702,7 @@ require(['vs/editor/editor.main'], function () {
     value: TABLE_PRESETS.ss_hist,
   });
 
-  gdTsqlEditor = monaco.editor.create(document.getElementById('gd-tsql-editor-container'), {
-    ...base,
-    value: '-- Goldendew SFMC SQL Query Activity\nSELECT TOP 1000\n    u.ContactKey,\n    u.Email\nFROM [RC_User] u\nWHERE u.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
-  });
+  // gdTsqlEditor는 Goldendew 탭 최초 클릭 시 지연 생성 (display:none 컨테이너 문제 회피)
 
   setTimeout(fixStringColor, 400);
 
@@ -771,15 +771,24 @@ function switchCustomer(customer) {
   document.querySelectorAll('.customer-wrap').forEach(el => {
     el.style.display = el.id === `customer-${customer}` ? 'flex' : 'none';
   });
-  setTimeout(() => {
-    if (customer === 'chorokusan') {
+  if (customer === 'goldendew') {
+    setTimeout(() => {
+      if (!gdTsqlEditor && typeof monaco !== 'undefined' && _monacoBase) {
+        gdTsqlEditor = monaco.editor.create(
+          document.getElementById('gd-tsql-editor-container'),
+          { ..._monacoBase, value: '-- Goldendew SFMC SQL Query Activity\nSELECT TOP 1000\n    u.ContactKey,\n    u.Email\nFROM [RC_User] u\nWHERE u.CreatedDate >= DATEADD(DAY, -30, GETDATE())' }
+        );
+        if (!isLight) setTimeout(fixStringColor, 200);
+      } else if (gdTsqlEditor) {
+        gdTsqlEditor.layout();
+      }
+    }, 50);
+  } else {
+    setTimeout(() => {
       if (activeMode === 'tsql' && tsqlEditor) tsqlEditor.layout();
       else if (mysqlEditor) mysqlEditor.layout();
-    } else if (customer === 'goldendew' && gdTsqlEditor) {
-      gdTsqlEditor.layout();
-      setTimeout(() => gdTsqlEditor.layout(), 150);
-    }
-  }, 50);
+    }, 50);
+  }
 }
 
 // ── Mode Switching ───────────────────────────────────────────────
