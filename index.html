@@ -1070,13 +1070,16 @@ function validateMySQL(sql) {
   const issues = [];
   if (!sql.trim()) return issues;
 
-  const hasInsert = /\bINSERT\b/i.test(sql);
-  const hasUpdate = /\bUPDATE\b/i.test(sql);
+  // Strip single-line comments so annotation labels never trigger false positives
+  const stripped = sql.replace(/--[^\n]*/g, '');
+
+  const hasInsert = /\bINSERT\b/i.test(stripped);
+  const hasUpdate = /\bUPDATE\b/i.test(stripped);
 
   if (!hasInsert && !hasUpdate)
     issues.push({ type: 'warning', message: 'INSERT 또는 UPDATE 문이 없습니다.', suggestion: 'Journey Custom Activity MySQL은 레거시 DB에 INSERT/UPDATE하는 용도입니다.' });
 
-  if (hasUpdate && !/\bWHERE\b/i.test(sql))
+  if (hasUpdate && !/\bWHERE\b/i.test(stripped))
     issues.push({ type: 'error', message: 'UPDATE문에 WHERE 절이 없습니다.', suggestion: '조건 없이 UPDATE하면 테이블의 모든 행이 변경됩니다. WHERE 조건을 반드시 추가하세요.' });
 
   const tsqlFns = [
@@ -1090,16 +1093,16 @@ function validateMySQL(sql) {
     [/\bNVARCHAR\b/i,        'NVARCHAR는 T-SQL 타입입니다.',      'MySQL에서는 VARCHAR 또는 TEXT를 사용하세요.'],
   ];
   for (const [p, msg, fix] of tsqlFns)
-    if (p.test(sql)) issues.push({ type: 'error', message: msg, suggestion: fix });
+    if (p.test(stripped)) issues.push({ type: 'error', message: msg, suggestion: fix });
 
-  if (/\bDATEDIFF\s*\(/i.test(sql))
+  if (/\bDATEDIFF\s*\(/i.test(stripped))
     issues.push({ type: 'warning', message: 'DATEDIFF() 파라미터 순서가 T-SQL과 MySQL이 다릅니다.', suggestion: 'MySQL: DATEDIFF(end_date, start_date)\nT-SQL: DATEDIFF(unit, start_date, end_date)\n순서를 반드시 확인하세요.' });
 
-  const noVars = sql.replace(/\[\[[\w\s.]+\]\]/g, '');
+  const noVars = stripped.replace(/\[\[[\w\s.]+\]\]/g, '');
   if (/\[[^\]]+\]/.test(noVars))
     issues.push({ type: 'warning', message: '대괄호([]) 식별자는 T-SQL 방식입니다.', suggestion: 'MySQL에서는 백틱(`)으로 식별자를 감싸세요.\n예: `table_name`, `column_name`' });
 
-  if (/\bSELECT\s+TOP\s+\d+/i.test(sql))
+  if (/\bSELECT\s+TOP\s+\d+/i.test(stripped))
     issues.push({ type: 'error', message: 'SELECT TOP은 T-SQL 문법입니다.', suggestion: 'MySQL에서는 쿼리 끝에 LIMIT n을 사용하세요.\n예: SELECT col FROM table LIMIT 100' });
 
   const journeyVars = sql.match(/\[\[[\w\s.]+\]\]/g);
@@ -1119,7 +1122,6 @@ function validateMySQL(sql) {
     issues.push({ type: 'info', message: '쿼리 끝에 세미콜론(;)이 없습니다.', suggestion: '세미콜론을 추가하면 멀티 쿼리 실행 시 명확합니다.' });
 
   // 콤마 누락 검사 (공통 헬퍼)
-  const stripped = sql.replace(/--[^\n]*/g, '');
   const checkMissingComma = (block) => {
     const lines = block.split('\n').map(l => l.trim()).filter(l => l);
     for (let i = 1; i < lines.length; i++) {
@@ -1194,20 +1196,39 @@ function autoFixMySQL(sql) {
 
   function apply(label, fn) {
     const beforeLines = fixed.split('\n');
+    const codeOnly = beforeLines.map(l => l.replace(/--[^\n]*/, '')).join('\n');
+    const savedFixed = fixed;
+    fixed = codeOnly;
     fn();
-    const afterLines = fixed.split('\n');
-    if (afterLines.join('\n') === beforeLines.join('\n')) return;
+    const transformed = fixed;
+    fixed = savedFixed;
+
+    if (transformed === codeOnly) return;
     changes.push(label);
 
-    if (beforeLines.length === afterLines.length) {
-      fixed = afterLines.map((line, i) =>
-        line !== beforeLines[i] ? annotate(line, label) : line
-      ).join('\n');
+    const transformedLines = transformed.split('\n');
+    const codeOnlyLines = codeOnly.split('\n');
+
+    if (beforeLines.length === transformedLines.length) {
+      fixed = beforeLines.map((orig, i) => {
+        if (transformedLines[i] === codeOnlyLines[i]) return orig;
+        const commentMatch = orig.match(/(--[^\n]*)$/);
+        const existingComment = commentMatch ? commentMatch[1] : '';
+        const newCode = transformedLines[i].trimEnd();
+        const base = existingComment ? `${newCode} ${existingComment}` : newCode;
+        return annotate(base, label);
+      }).join('\n');
     } else {
-      const result = [...afterLines];
-      const minLen = Math.min(beforeLines.length, afterLines.length);
-      for (let i = 0; i < minLen; i++) {
-        if (result[i] !== beforeLines[i]) { result[i] = annotate(result[i], label); break; }
+      const result = transformedLines.map((tl, i) => {
+        const orig = beforeLines[i];
+        if (orig === undefined || tl !== codeOnlyLines[i]) return tl;
+        return orig;
+      });
+      for (let i = 0; i < Math.min(beforeLines.length, transformedLines.length); i++) {
+        if (transformedLines[i] !== codeOnlyLines[i]) {
+          result[i] = annotate(transformedLines[i], label);
+          break;
+        }
       }
       fixed = result.join('\n');
     }

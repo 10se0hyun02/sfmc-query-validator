@@ -394,8 +394,8 @@ const SFMC_RULES = [
       const colLines = [];
       let inSelect = false;
       for (const raw of sql.split('\n')) {
-        const line = raw.trim();
-        if (!line || line.startsWith('--')) continue;
+        const line = raw.replace(/--[^\n]*/, '').trim();
+        if (!line) continue;
         if (/^SELECT\b/i.test(line)) {
           inSelect = true;
           const after = line.replace(/^SELECT\s*(TOP\s+\d+\s*|DISTINCT\s+)?/i, '').trim();
@@ -421,14 +421,18 @@ const SFMC_RULES = [
 function validate(sql) {
   if (!sql || !sql.trim()) return [];
 
+  // Strip single-line comments so annotation labels (e.g. "-- [수정] IFNULL() → ISNULL()")
+  // never trigger false positives when their text matches a rule pattern.
+  const sqlClean = sql.replace(/--[^\n]*/g, '');
+
   const results = [];
 
   for (const rule of SFMC_RULES) {
     let matched = false;
     if (typeof rule.check === 'function') {
-      matched = rule.check(sql);
+      matched = rule.check(sqlClean);
     } else {
-      matched = rule.pattern.test(sql);
+      matched = rule.pattern.test(sqlClean);
     }
 
     if (matched) {
@@ -480,21 +484,45 @@ function autoFix(sql) {
   }
 
   function apply(label, fn) {
+    // Run fn() only on the non-comment portion of each line so that annotation
+    // labels added by previous apply() calls are never corrupted by later regexes.
     const beforeLines = fixed.split('\n');
+    const codeOnly = beforeLines.map(l => l.replace(/--[^\n]*/, '')).join('\n');
+    let transformed = codeOnly;
+    const savedFixed = fixed;
+    fixed = transformed;
     fn();
-    const afterLines = fixed.split('\n');
-    if (afterLines.join('\n') === beforeLines.join('\n')) return;
+    transformed = fixed;
+    fixed = savedFixed;
+
+    if (transformed === codeOnly) return;
     changes.push(label);
 
-    if (beforeLines.length === afterLines.length) {
-      fixed = afterLines.map((line, i) =>
-        line !== beforeLines[i] ? annotate(line, label) : line
-      ).join('\n');
+    const transformedLines = transformed.split('\n');
+    const codeOnlyLines = codeOnly.split('\n');
+
+    if (beforeLines.length === transformedLines.length) {
+      fixed = beforeLines.map((orig, i) => {
+        if (transformedLines[i] === codeOnlyLines[i]) return orig;
+        // Re-attach any existing annotation suffix, then annotate
+        const commentMatch = orig.match(/(--[^\n]*)$/);
+        const existingComment = commentMatch ? commentMatch[1] : '';
+        const newCode = transformedLines[i].trimEnd();
+        const baseWithComment = existingComment ? `${newCode} ${existingComment}` : newCode;
+        return annotate(baseWithComment, label);
+      }).join('\n');
     } else {
-      const result = [...afterLines];
-      const minLen = Math.min(beforeLines.length, afterLines.length);
-      for (let i = 0; i < minLen; i++) {
-        if (result[i] !== beforeLines[i]) { result[i] = annotate(result[i], label); break; }
+      // Line count changed (e.g. LIMIT removal); annotate first changed line only
+      const result = transformedLines.map((tl, i) => {
+        const orig = beforeLines[i];
+        if (orig === undefined || tl !== codeOnlyLines[i]) return tl;
+        return orig;
+      });
+      for (let i = 0; i < Math.min(beforeLines.length, transformedLines.length); i++) {
+        if (transformedLines[i] !== codeOnlyLines[i]) {
+          result[i] = annotate(transformedLines[i], label);
+          break;
+        }
       }
       fixed = result.join('\n');
     }
