@@ -279,6 +279,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<script src="goldendew-schema.js"></script>
 <script src="validator.js"></script>
 <script>
 // ── Theme ────────────────────────────────────────────────────────
@@ -602,7 +603,7 @@ require(['vs/editor/editor.main'], function () {
     provideCompletionItems: (model, position) => {
       const range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: position.column, endColumn: position.column };
       const fn = (label, insertText, detail) => ({ label, insertText, detail, range, kind: monaco.languages.CompletionItemKind.Function, insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet });
-      return { suggestions: [
+      const suggestions = [
         fn('GETDATE',  'GETDATE()',                               '현재 날짜/시간 (T-SQL)'),
         fn('NOW',      'NOW()',                                   '현재 날짜/시간 (MySQL)'),
         fn('DATEADD',  'DATEADD(${1:DAY}, ${2:-30}, GETDATE())', 'T-SQL 날짜 연산'),
@@ -614,7 +615,39 @@ require(['vs/editor/editor.main'], function () {
         fn('TOP',      'TOP ${1:1000}',                          'T-SQL 결과 수 제한'),
         fn('LIMIT',    'LIMIT ${1:100}',                         'MySQL 결과 수 제한'),
         fn('INTO',     'INTO [${1:Result_DE}]',                  'T-SQL 결과 DE 지정'),
-      ]};
+      ];
+
+      // Goldendew DE 테이블명 + 컬럼 자동완성
+      if (typeof GOLDENDEW_SCHEMA !== 'undefined') {
+        for (const [deName, de] of Object.entries(GOLDENDEW_SCHEMA)) {
+          suggestions.push({
+            label: deName,
+            insertText: `[${deName}]`,
+            detail: `Goldendew DE · ${de.columns.length}개 컬럼`,
+            range,
+            kind: monaco.languages.CompletionItemKind.Class,
+            sortText: '0' + deName,
+          });
+          for (const col of de.columns) {
+            const meta = [
+              col.type,
+              col.maxLength ? `(${col.maxLength})` : '',
+              col.isPrimaryKey ? 'PK' : '',
+              col.isRequired   ? '필수' : '',
+            ].filter(Boolean).join(' ');
+            suggestions.push({
+              label: col.name,
+              insertText: col.name,
+              detail: `${deName} · ${meta}`,
+              range,
+              kind: monaco.languages.CompletionItemKind.Field,
+              sortText: '1' + col.name,
+            });
+          }
+        }
+      }
+
+      return { suggestions };
     }
   });
 });
@@ -867,6 +900,19 @@ document.addEventListener('click', e => {
 
 // ── DE List (SOAP) ────────────────────────────────────────────────
 sfmc.deList = [];
+
+// Goldendew DE 목록 미리 설정 (API 연결 없이도 검색 가능)
+if (typeof GOLDENDEW_SCHEMA !== 'undefined') {
+  sfmc.deList = Object.keys(GOLDENDEW_SCHEMA).map(name => ({
+    name,
+    key:  GOLDENDEW_SCHEMA[name].customerKey,
+    desc: 'Goldendew',
+  })).sort((a, b) => a.name.localeCompare(b.name));
+  ['tsql', 'mysql'].forEach(m => {
+    const btn = document.getElementById(`${m}-de-list-btn`);
+    if (btn) btn.textContent = `${sfmc.deList.length}개 (Goldendew)`;
+  });
+}
 
 function extractSoapToken(jwtToken) {
   try {
