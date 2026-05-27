@@ -2,13 +2,13 @@
 
 Salesforce Marketing Cloud의 **SQL Query Activity(Automation Studio)** 및 **Journey Custom Activity(MySQL)** 쿼리를 브라우저에서 바로 검증·자동수정하는 도구입니다.
 
-🔗 **라이브 사이트:** https://wonderful-fox-48914f.netlify.app
+🔗 **라이브 사이트:** https://10se0hyun02.github.io/sfmc-query-validator/
 
 ---
 
 ## 실행 방법
 
-**온라인:** https://wonderful-fox-48914f.netlify.app 접속
+**온라인:** https://10se0hyun02.github.io/sfmc-query-validator/ 접속
 
 **로컬:** 별도 설치 없이 `index.html`을 브라우저로 열면 바로 사용할 수 있습니다.
 
