@@ -34,6 +34,7 @@
   <div class="action-bar">
     <button class="btn btn-primary" id="tsql-btn-validate">검증하기</button>
     <button class="btn btn-fix" id="tsql-btn-autofix">🔧 수정</button>
+    <button class="btn btn-count" id="tsql-btn-count" onclick="checkCount()">🔢 모수 확인</button>
     <div class="action-bar-sep"></div>
     <button class="btn btn-secondary" id="tsql-btn-save">💾 저장</button>
     <button class="btn btn-secondary" id="tsql-btn-load">📂 불러오기</button>
@@ -316,6 +317,15 @@
     </div>
   </div>
 
+</div>
+
+<!-- 모수 확인 모달 -->
+<div class="modal-overlay" id="count-modal" style="display:none" onclick="closeModal('count-modal')">
+  <div class="modal" style="min-width:320px;" onclick="event.stopPropagation()">
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:14px;">🔢 모수 확인</h3>
+    <div id="count-modal-body"></div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:14px;" onclick="closeModal('count-modal')">닫기</button>
+  </div>
 </div>
 
 <!-- 저장 모달 -->
@@ -1593,6 +1603,192 @@ function deleteQuery(btn) {
   delete saved[item.dataset.key];
   localStorage.setItem(storageKey(item.dataset.mode), JSON.stringify(saved));
   showLoadModal(item.dataset.mode);
+}
+
+// ── 모수 확인 ─────────────────────────────────────────────────────
+function _countModalBody() { return document.getElementById('count-modal-body'); }
+
+function _setCountContent(type, msg) {
+  const b = _countModalBody();
+  if (type === 'loading') {
+    b.innerHTML = `
+      <div style="text-align:center;padding:20px 0 8px;">
+        <div style="font-size:28px;margin-bottom:12px;">⏳</div>
+        <div id="count-step-msg" style="font-size:13px;color:var(--text-muted);line-height:1.6;">${msg}</div>
+      </div>`;
+  } else if (type === 'result') {
+    b.innerHTML = `
+      <div style="text-align:center;padding:16px 0;">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">쿼리 결과 모수</div>
+        <div style="font-size:52px;font-weight:700;color:var(--accent);letter-spacing:-1px;">${Number(msg).toLocaleString()}</div>
+        <div style="font-size:14px;color:var(--text-muted);margin-top:4px;">명</div>
+      </div>`;
+  } else if (type === 'error') {
+    b.innerHTML = `
+      <div class="issue-item error" style="margin:4px 0;">
+        <span class="issue-badge error">오류</span>
+        <div class="issue-msg" style="white-space:pre-wrap;word-break:break-all;">${msg}</div>
+      </div>`;
+  }
+}
+
+function _updateCountStep(msg) {
+  const el = document.getElementById('count-step-msg');
+  if (el) el.innerHTML = msg;
+  else _setCountContent('loading', msg);
+}
+
+function _sfmcSoapEnvelope(token, action, bodyXml) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"
+            xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <s:Header>
+    <a:Action s:mustUnderstand="1">${action}</a:Action>
+    <oAuth xmlns="http://exacttarget.com">
+      <oAuthToken>${token}</oAuthToken>
+    </oAuth>
+  </s:Header>
+  <s:Body>${bodyXml}</s:Body>
+</s:Envelope>`;
+}
+
+async function _sfmcSoap(subdomain, token, action, bodyXml) {
+  const url  = `https://${subdomain}.soap.marketingcloudapis.com/Service.asmx`;
+  const resp = await sfmcFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': action },
+    body: _sfmcSoapEnvelope(token, action, bodyXml),
+  });
+  const text = await resp.text();
+  const doc  = new DOMParser().parseFromString(text, 'text/xml');
+  const code = doc.querySelector('StatusCode')?.textContent;
+  if (code && code !== 'OK') {
+    const detail = doc.querySelector('StatusMessage')?.textContent
+                || doc.querySelector('ErrorMessage')?.textContent
+                || text.slice(0, 300);
+    throw new Error(detail);
+  }
+  return doc;
+}
+
+async function _createCountDE(subdomain, token, deKey) {
+  await _sfmcSoap(subdomain, token, 'Create', `
+    <CreateRequest xmlns="http://exacttarget.com/wsdl/partnerAPI">
+      <Objects xsi:type="DataExtension">
+        <Name>${deKey}</Name>
+        <CustomerKey>${deKey}</CustomerKey>
+        <IsSendable>false</IsSendable>
+        <Fields>
+          <Field>
+            <Name>모수</Name>
+            <FieldType>Number</FieldType>
+            <IsRequired>false</IsRequired>
+          </Field>
+        </Fields>
+      </Objects>
+    </CreateRequest>`);
+}
+
+async function _createQueryDef(subdomain, token, qdKey, sql, targetDeKey) {
+  const safe = sql.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  await _sfmcSoap(subdomain, token, 'Create', `
+    <CreateRequest xmlns="http://exacttarget.com/wsdl/partnerAPI">
+      <Objects xsi:type="QueryDefinition">
+        <Name>${qdKey}</Name>
+        <CustomerKey>${qdKey}</CustomerKey>
+        <QueryText>${safe}</QueryText>
+        <TargetType>DE</TargetType>
+        <DataExtensionTarget>
+          <Name>${targetDeKey}</Name>
+          <CustomerKey>${targetDeKey}</CustomerKey>
+        </DataExtensionTarget>
+        <TargetUpdateType>Overwrite</TargetUpdateType>
+      </Objects>
+    </CreateRequest>`);
+}
+
+async function _performQueryDef(subdomain, token, qdKey) {
+  await _sfmcSoap(subdomain, token, 'Perform', `
+    <PerformRequestMsg xmlns="http://exacttarget.com/wsdl/partnerAPI">
+      <Action>start</Action>
+      <Definitions>
+        <Definition xsi:type="QueryDefinition">
+          <CustomerKey>${qdKey}</CustomerKey>
+        </Definition>
+      </Definitions>
+    </PerformRequestMsg>`);
+}
+
+async function _pollCountResult(subdomain, token, deKey) {
+  const timeout = 180000;
+  const start   = Date.now();
+  while (Date.now() - start < timeout) {
+    await new Promise(r => setTimeout(r, 5000));
+    try {
+      const url  = `https://${subdomain}.rest.marketingcloudapis.com/data/v1/customobjectdata/key/${encodeURIComponent(deKey)}/rowset?$pageSize=1`;
+      const resp = await sfmcFetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await resp.json();
+      if (data.items?.length > 0) {
+        const row = { ...(data.items[0].keys || {}), ...(data.items[0].values || {}) };
+        return row['모수'] ?? Object.values(row)[0] ?? 0;
+      }
+    } catch(e) { /* 계속 폴링 */ }
+    const elapsed = Math.floor((Date.now() - start) / 1000);
+    _updateCountStep(`SFMC 쿼리 실행 중... <span style="color:var(--text)">${elapsed}초</span> 경과<br><small style="color:var(--text-muted);">쿼리 복잡도에 따라 최대 3분 소요</small>`);
+  }
+  throw new Error('시간 초과 (3분). SFMC에서 직접 확인하거나 쿼리를 단순화하세요.');
+}
+
+async function _deleteSoapObject(subdomain, token, type, key) {
+  await _sfmcSoap(subdomain, token, 'Delete', `
+    <DeleteRequest xmlns="http://exacttarget.com/wsdl/partnerAPI">
+      <Objects xsi:type="${type}">
+        <CustomerKey>${key}</CustomerKey>
+      </Objects>
+    </DeleteRequest>`).catch(() => {});
+}
+
+async function checkCount() {
+  if (!tsqlEditor) return;
+  const sql = tsqlEditor.getValue().trim().replace(/;\s*$/, '');
+  if (!sql) { alert('에디터에 쿼리를 먼저 입력하세요.'); return; }
+
+  const token     = sfmc.shared.token     || sfmc.tsql?.token;
+  const subdomain = sfmc.shared.subdomain || sfmc.tsql?.subdomain;
+  if (!token) {
+    document.getElementById('count-modal').style.display = 'flex';
+    _setCountContent('error', 'SFMC에 먼저 연결하세요.\n(🔗 DE 연결 탭 → 연결하기)');
+    return;
+  }
+
+  document.getElementById('count-modal').style.display = 'flex';
+  _setCountContent('loading', '준비 중...');
+
+  const uid       = Date.now().toString(36).toUpperCase();
+  const deKey     = `_MOSOO_${uid}`;
+  const qdKey     = `_MOSOO_QD_${uid}`;
+  const countSql  = `SELECT  COUNT(*) AS 모수\n  FROM  (\n${sql}\n        ) AS _T`;
+
+  try {
+    _updateCountStep('1/3 임시 DE 생성 중...');
+    await _createCountDE(subdomain, token, deKey);
+
+    _updateCountStep('2/3 Query Activity 생성 및 실행 중...');
+    await _createQueryDef(subdomain, token, qdKey, countSql, deKey);
+    await _performQueryDef(subdomain, token, qdKey);
+
+    _updateCountStep('3/3 결과 대기 중...');
+    const count = await _pollCountResult(subdomain, token, deKey);
+    _setCountContent('result', count);
+  } catch(err) {
+    _setCountContent('error', err.message);
+  } finally {
+    setTimeout(() => {
+      _deleteSoapObject(subdomain, token, 'QueryDefinition', qdKey);
+      _deleteSoapObject(subdomain, token, 'DataExtension',   deKey);
+    }, 3000);
+  }
 }
 
 // ── AI Query Generator ────────────────────────────────────────────
