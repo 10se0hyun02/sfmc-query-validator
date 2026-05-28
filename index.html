@@ -6,7 +6,7 @@
   <title>SFMC Query Validator</title>
   <link rel="stylesheet" href="style.css?v=4" />
 </head>
-<body>
+<body>ㅇ
 
 <!-- Header -->
 <div class="header">
@@ -58,6 +58,30 @@
         <button class="snippet-btn" data-e="tsql" data-k="stringagg">STRING_AGG</button>
         <button class="snippet-btn" data-e="tsql" data-k="cte">WITH CTE</button>
         <button class="snippet-btn" data-e="tsql" data-k="newid">RANDOM</button>
+      </div>
+      <!-- AI 쿼리 생성 패널 -->
+      <div id="ai-panel" class="ai-panel">
+        <div class="ai-panel-header">
+          <span class="ai-panel-title">🤖 AI 쿼리 생성</span>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" onclick="toggleAiKeyForm()">🔑 API 키</button>
+            <button id="ai-toggle-btn" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" onclick="toggleAiPanel()">▼ 접기</button>
+          </div>
+        </div>
+        <div id="ai-panel-body">
+          <div id="ai-key-form" style="display:none;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input class="mock-input" id="ai-api-key" type="password" placeholder="sk-ant-api03-..." style="flex:1;font-size:12px;" />
+              <button class="btn btn-primary" style="white-space:nowrap;font-size:12px;" onclick="saveAiKey()">저장</button>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:5px;">Anthropic Console에서 발급. localStorage에만 저장되며 서버로 전송되지 않습니다.</p>
+          </div>
+          <div class="ai-input-row">
+            <input class="mock-input" id="ai-prompt" placeholder="예) 최근 30일 내 구매하고 이메일 수신 동의한 고객" style="flex:1;" />
+            <button class="btn btn-primary" id="ai-gen-btn" onclick="generateQuery()" style="white-space:nowrap;">생성하기</button>
+          </div>
+          <div id="ai-msg" style="display:none;padding:0 12px 8px;"></div>
+        </div>
       </div>
       <div id="tsql-editor-container"></div>
     </div>
@@ -1555,6 +1579,145 @@ function deleteQuery(btn) {
   localStorage.setItem(storageKey(item.dataset.mode), JSON.stringify(saved));
   showLoadModal(item.dataset.mode);
 }
+
+// ── AI Query Generator ────────────────────────────────────────────
+const AI_KEY_LS  = 'sfmc_ai_apikey';
+const AI_OPEN_LS = 'sfmc_ai_panel_open';
+
+(function initAiPanel() {
+  if (localStorage.getItem(AI_OPEN_LS) === 'false') _setAiPanel(false);
+  const key = localStorage.getItem(AI_KEY_LS);
+  if (key) document.getElementById('ai-api-key').value = key;
+})();
+
+function _setAiPanel(open) {
+  document.getElementById('ai-panel-body').style.display = open ? '' : 'none';
+  document.getElementById('ai-toggle-btn').textContent   = open ? '▼ 접기' : '▶ 펼치기';
+}
+
+function toggleAiPanel() {
+  const open = document.getElementById('ai-panel-body').style.display !== 'none';
+  _setAiPanel(!open);
+  localStorage.setItem(AI_OPEN_LS, !open);
+}
+
+function toggleAiKeyForm() {
+  const form = document.getElementById('ai-key-form');
+  form.style.display = form.style.display === 'none' ? '' : 'none';
+}
+
+function saveAiKey() {
+  const key = document.getElementById('ai-api-key').value.trim();
+  if (!key) return;
+  localStorage.setItem(AI_KEY_LS, key);
+  document.getElementById('ai-key-form').style.display = 'none';
+  _showAiMsg('API 키가 저장되었습니다.', 'success');
+}
+
+function _showAiMsg(text, type) {
+  const el = document.getElementById('ai-msg');
+  const color = type === 'error' ? 'var(--error)' : type === 'success' ? 'var(--success)' : 'var(--text-muted)';
+  el.style.display = 'block';
+  el.innerHTML = `<span style="font-size:12px;color:${color};">${text}</span>`;
+  if (type !== 'error') setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+function _buildSchemaContext() {
+  if (typeof DATA_SCHEMA === 'undefined') return '(스키마 정보 없음)';
+  return Object.entries(DATA_SCHEMA).map(([name, de]) => {
+    const pk   = de.columns.filter(c => c.isPrimaryKey).map(c => c.name).join(', ') || '-';
+    const cols = de.columns.map(c => {
+      let info = c.type;
+      if (c.maxLength) info += `(${c.maxLength})`;
+      if (c.isPrimaryKey) info += ',PK';
+      if (c.isRequired)   info += ',필수';
+      return `    ${c.name}: ${info}`;
+    }).join('\n');
+    return `[${name}]\n  PK: ${pk}\n  Columns:\n${cols}`;
+  }).join('\n\n');
+}
+
+async function generateQuery() {
+  const apiKey   = localStorage.getItem(AI_KEY_LS) || document.getElementById('ai-api-key').value.trim();
+  const proxyUrl = sfmc.proxyUrl;
+  const prompt   = document.getElementById('ai-prompt').value.trim();
+
+  if (!apiKey) {
+    document.getElementById('ai-key-form').style.display = '';
+    document.getElementById('ai-api-key').focus();
+    _showAiMsg('API 키를 먼저 입력해주세요.', 'error');
+    return;
+  }
+  if (!proxyUrl) {
+    _showAiMsg('🔗 DE 연결 탭 → 프록시 URL을 먼저 설정하고 저장하세요.', 'error');
+    return;
+  }
+  if (!prompt) {
+    _showAiMsg('조건을 입력해주세요.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('ai-gen-btn');
+  btn.disabled    = true;
+  btn.textContent = '⏳ 생성 중...';
+  document.getElementById('ai-msg').style.display = 'none';
+
+  const schemaCtx = _buildSchemaContext();
+  const systemPrompt = `You are an SFMC Automation Studio SQL expert. Generate T-SQL for SQL Query Activity.
+
+=== STRICT SCHEMA RULES (most important) ===
+- Use ONLY the DE names and column names defined in the schema below. Never invent or assume any table/column name.
+- Enclose every DE name in square brackets exactly as written, e.g. [RC_Order].
+- If the user's condition requires a column that does not exist in the schema, write a -- ⚠ 컬럼 없음: [DE명.컬럼명] comment and omit that condition from the WHERE clause.
+- Choose the most relevant DE(s) from the schema based on the user's description. JOIN multiple DEs when needed.
+
+=== OUTPUT RULES ===
+- Output ONLY the SQL query — no explanation, no markdown, no code fences.
+- SELECT only: no INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TRUNCATE.
+- No DECLARE, temp tables (#temp), table variables (@var), CURSOR, WHILE, PIVOT, FOR XML/JSON.
+
+=== T-SQL FUNCTIONS ===
+- Current datetime: GETDATE()
+- Date arithmetic: DATEADD(unit, n, date)  e.g. DATEADD(DAY, -30, GETDATE())
+- Null handling: ISNULL(col, default)
+
+=== AVAILABLE DATA EXTENSIONS ===
+${schemaCtx}`;
+
+  try {
+    const resp = await fetch(`${proxyUrl}/claude`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: `다음 조건의 타겟 대상자를 뽑는 SFMC T-SQL 쿼리를 작성해주세요:\n${prompt}` }],
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || `HTTP ${resp.status}`);
+
+    const sql = data.content?.[0]?.text?.trim() || '';
+    if (!sql) throw new Error('생성된 쿼리가 없습니다.');
+
+    if (tsqlEditor) {
+      tsqlEditor.setValue(sql);
+      tsqlEditor.focus();
+    }
+    _showAiMsg('✅ 쿼리가 에디터에 삽입되었습니다. 반드시 검증 후 사용하세요.', 'success');
+  } catch (err) {
+    _showAiMsg(`오류: ${err.message}`, 'error');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '생성하기';
+  }
+}
+
+document.getElementById('ai-prompt').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) generateQuery();
+});
 
 </script>
 </body>
