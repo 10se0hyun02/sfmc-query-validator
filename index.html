@@ -1589,7 +1589,7 @@ function showLoadModal(mode) {
           e.exclude ? `<span style="color:var(--error);">🚫 ${e.exclude.split('\n')[0].slice(0,30)}${e.exclude.length>30?'…':''}</span>` : '',
         ].filter(Boolean).join('<br>');
         return `
-      <div class="saved-item" data-mode="${mode}" data-key="${k}">
+      <div class="saved-item" data-mode="${mode}" data-key="${encodeURIComponent(k)}">
         <div style="min-width:0;">
           <div style="font-size:13px;font-weight:500;">${k}</div>
           <div style="font-size:11px;color:var(--text-muted);">${e.date}</div>
@@ -1607,24 +1607,24 @@ function showLoadModal(mode) {
 function loadQuery(btn) {
   const item  = btn.closest('.saved-item');
   const mode  = item.dataset.mode;
+  const key   = decodeURIComponent(item.dataset.key);
   const saved = JSON.parse(localStorage.getItem(storageKey(mode)) || '{}');
-  const entry = saved[item.dataset.key];
+  const entry = saved[key];
   if (!entry) return;
   getEditor(mode)?.setValue(entry.sql);
+  closeModal('load-modal');
   if (mode === 'tsql') {
     document.getElementById('ai-prompt-include').value = entry.include || '';
     document.getElementById('ai-prompt-exclude').value = entry.exclude || '';
-    if ((entry.include || entry.exclude) && document.getElementById('ai-panel-body').style.display === 'none') {
-      _setAiPanel(true);
-    }
+    if (entry.include || entry.exclude) _setAiPanel(true);
   }
-  closeModal('load-modal');
 }
 
 function deleteQuery(btn) {
   const item  = btn.closest('.saved-item');
+  const key   = decodeURIComponent(item.dataset.key);
   const saved = JSON.parse(localStorage.getItem(storageKey(item.dataset.mode)) || '{}');
-  delete saved[item.dataset.key];
+  delete saved[key];
   localStorage.setItem(storageKey(item.dataset.mode), JSON.stringify(saved));
   showLoadModal(item.dataset.mode);
 }
