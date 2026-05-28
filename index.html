@@ -615,7 +615,7 @@ require(['vs/editor/editor.main'], function () {
 
   tsqlEditor = monaco.editor.create(document.getElementById('tsql-editor-container'), {
     ...base,
-    value: '-- SFMC SQL Query Activity 예시\n-- Destination DE는 다음 탭에서 선택\nSELECT TOP 1000\n    c.ContactKey,\n    c.Email\nFROM [Contact_DE] c\nWHERE c.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
+    value: 'SELECT\n    c.ContactKey,\n    c.Email\nFROM [Contact_DE] c\nWHERE c.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
   });
 
   mysqlEditor = monaco.editor.create(document.getElementById('mysql-editor-container'), {
