@@ -2515,7 +2515,23 @@ async function _callAIWithFallback(messages, { maxTokens = 1024, jsonMode = fals
         return await _callOpenAICompat(apiKey, 'https://api.groq.com/openai/v1/chat/completions', model, messages, maxTokens, jsonMode);
       }
       if (provider === 'or') {
-        return await _callOpenAICompat(apiKey, 'https://openrouter.ai/api/v1/chat/completions', 'meta-llama/llama-3.3-70b-instruct', messages, maxTokens, jsonMode);
+        const OR_FREE = [
+          'meta-llama/llama-3.3-70b-instruct:free',
+          'google/gemini-2.0-flash-exp:free',
+          'deepseek/deepseek-chat-v3-0324:free',
+          'qwen/qwen3-235b-a22b:free',
+        ];
+        let orLastErr;
+        for (const model of OR_FREE) {
+          try {
+            return await _callOpenAICompat(apiKey, 'https://openrouter.ai/api/v1/chat/completions', model, messages, maxTokens, jsonMode);
+          } catch (e) {
+            orLastErr = e;
+            if (e.status === 429) { console.warn(`[OR] ${model} 429 → 다음 모델`); continue; }
+            throw e;
+          }
+        }
+        throw Object.assign(new Error('OpenRouter 무료 모델 전체 한도 초과. 내일 다시 시도하거나 OpenRouter에 크레딧을 충전하세요.'), { status: 429 });
       }
       if (provider === 'gemini') {
         // Gemini는 별도 포맷
