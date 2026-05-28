@@ -1702,17 +1702,22 @@ ${schemaCtx}`;
       contents: [{ role: 'user', parts: [{ text: userMsg }] }],
       generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
     };
-    const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
+    const GEMINI_MODELS = [
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent',
+    ];
+    let resp, data;
+    for (const baseUrl of GEMINI_MODELS) {
+      resp = await fetch(`${baseUrl}?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reqBody),
-      }
-    );
-    let data;
-    try { data = await resp.json(); } catch { data = {}; }
-    console.log('[Gemini]', resp.status, JSON.stringify(data).slice(0, 500));
+      });
+      try { data = await resp.json(); } catch { data = {}; }
+      console.log('[Gemini]', baseUrl.split('/models/')[1], resp.status, JSON.stringify(data).slice(0, 300));
+      if (resp.ok || resp.status !== 404) break;
+    }
     if (!resp.ok) {
       const msg = data.error?.message || data.error?.status || JSON.stringify(data).slice(0, 300);
       throw new Error(`HTTP ${resp.status}: ${msg}`);
