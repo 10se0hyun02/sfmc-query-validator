@@ -1856,7 +1856,7 @@ async function _sampleDEsFromQuery(sql, subdomain, token) {
     const schema = DATA_SCHEMA[deName];
     if (!schema?.customerKey) continue;
     try {
-      const url = `https://${subdomain}.rest.marketingcloudapis.com/data/v1/customobjectdata/key/${encodeURIComponent(schema.customerKey)}/rowset?$pageSize=5`;
+      const url = `https://${subdomain}.rest.marketingcloudapis.com/data/v1/customobjectdata/key/${encodeURIComponent(schema.customerKey)}/rowset?$pageSize=3`;
       const resp = await sfmcFetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await resp.json();
       if (!data.items?.length) { results.push(`[${deName}]: 데이터 없음 (0행)`); continue; }
@@ -1868,8 +1868,9 @@ async function _sampleDEsFromQuery(sql, subdomain, token) {
           if (val !== null && val !== '') colVals[col].add(String(val).slice(0, 40));
         });
       });
+      const sqlUpper = sql.toUpperCase();
       const colLines = Object.entries(colVals)
-        .filter(([, v]) => v.size > 0)
+        .filter(([col, v]) => v.size > 0 && sqlUpper.includes(col.toUpperCase()))
         .map(([col, vals]) => `  ${col}: ${[...vals].map(v => `'${v}'`).join(', ')}`)
         .join('\n');
       results.push(`[${deName}] (${data.items.length}행 샘플 — 실제 저장값):\n${colLines}`);
@@ -1985,7 +1986,11 @@ issues: only include real problems found (value mismatch, null handling, join ke
 diagnostics: always generate, simplify each layer to a standalone COUNT query.
 Respond in Korean.`;
 
-  const numberedSql = sql.split('\n').map((l, i) => `${String(i+1).padStart(3,' ')}│ ${l}`).join('\n');
+  const sqlLines = sql.split('\n');
+  const truncated = sqlLines.length > 80;
+  const numberedSql = sqlLines.slice(0, 80)
+    .map((l, i) => `${String(i+1).padStart(3,' ')}│ ${l}`).join('\n')
+    + (truncated ? '\n... (이하 생략)' : '');
   const token     = sfmc.shared.token     || sfmc.tsql?.token;
   const subdomain = sfmc.shared.subdomain || sfmc.tsql?.subdomain;
   let sampleSection = '';
@@ -2009,12 +2014,19 @@ Respond in Korean.`;
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }],
-          temperature: 0.1, max_tokens: 3000,
+          temperature: 0.1, max_tokens: 2000,
           response_format: { type: 'json_object' },
         }),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error?.message || `HTTP ${resp.status}`);
+      if (!resp.ok) {
+        if (resp.status === 429) {
+          const retryMatch = (data.error?.message || '').match(/try again in ([\d]+m[\d.]+s|[\d.]+s)/i);
+          const retryMsg = retryMatch ? `${retryMatch[1]} 후 다시 시도하세요.` : '잠시 후 다시 시도하세요.';
+          throw new Error(`Groq 일일 토큰 한도 초과. ${retryMsg}\n💡 내일이 되면 자동 초기화됩니다.`);
+        }
+        throw new Error(data.error?.message || `HTTP ${resp.status}`);
+      }
       text = data.choices?.[0]?.message?.content?.trim() || '{}';
 
     } else if (isGemini) {
@@ -2400,12 +2412,12 @@ ${schemaCtx}`;
     const isGemini = apiKey.startsWith('AIza');
 
     if (isGroq) {
-      // ── Groq (Llama 3.3 70B) ─────────────────────────────────
+      // ── Groq (llama-3.1-8b-instant: TPD 여유 더 많음) ───────
       resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: 'llama-3.1-8b-instant',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user',   content: userMsg },
@@ -2416,7 +2428,14 @@ ${schemaCtx}`;
       });
       try { data = await resp.json(); } catch { data = {}; }
       console.log('[Groq]', resp.status, JSON.stringify(data).slice(0, 300));
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${data.error?.message || JSON.stringify(data).slice(0, 200)}`);
+      if (!resp.ok) {
+        if (resp.status === 429) {
+          const retryMatch = (data.error?.message || '').match(/try again in ([\d]+m[\d.]+s|[\d.]+s)/i);
+          const retryMsg = retryMatch ? `${retryMatch[1]} 후 다시 시도하세요.` : '잠시 후 다시 시도하세요.';
+          throw new Error(`Groq 일일 토큰 한도 초과. ${retryMsg}\n💡 내일이 되면 자동 초기화됩니다.`);
+        }
+        throw new Error(`HTTP ${resp.status}: ${data.error?.message || JSON.stringify(data).slice(0, 200)}`);
+      }
       sql = data.choices?.[0]?.message?.content?.trim() || '';
 
     } else if (isGemini) {
