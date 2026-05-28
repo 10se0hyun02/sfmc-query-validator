@@ -1742,13 +1742,11 @@ SELECT  FIN.*
         ) AS FIN
  WHERE  ROW_NUM = 1
 
-Layer roles:
+Layer roles (ALWAYS use all 4 layers, no exceptions):
 - T0 subquery: contact base filter (DE JOIN, basic WHERE conditions)
-- T1 subquery: order/purchase history aggregated by member key (GROUP BY)
+- T1 subquery: order/purchase history aggregated by member key (GROUP BY). If no order data needed, use a stub: SELECT NULL AS ContactKey, NULL AS Last_Purchase_Date, NULL AS Last_Order_Date WHERE 1=0
 - BASE: T0 LEFT JOIN T1, compute flag columns with MAX(CASE WHEN ... END), GROUP BY all non-agg columns
-- FIN: filter BASE by flags, add ROW_NUMBER() OVER(PARTITION BY phone) for deduplication, WHERE ROW_NUM = 1
-
-Simple queries (single DE, no aggregation) may omit T1/BASE/FIN layers.
+- FIN: filter BASE by flags, add ROW_NUMBER() OVER(PARTITION BY MobilePhone) for deduplication, WHERE ROW_NUM = 1
 
 === T-SQL FUNCTIONS ===
 - KST now: DATEADD(HOUR, 9, GETUTCDATE())
