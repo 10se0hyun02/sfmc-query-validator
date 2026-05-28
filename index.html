@@ -41,6 +41,42 @@
   </div>
   <div class="main">
     <div class="editor-panel">
+      <!-- AI 쿼리 생성 패널 -->
+      <div id="ai-panel" class="ai-panel">
+        <div class="ai-panel-header">
+          <span class="ai-panel-title">🤖 AI 쿼리 생성</span>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" onclick="toggleAiKeyForm()">🔑 API 키</button>
+            <button id="ai-toggle-btn" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" onclick="toggleAiPanel()">▼ 접기</button>
+          </div>
+        </div>
+        <div id="ai-panel-body">
+          <div id="ai-key-form" style="display:none;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input class="mock-input" id="ai-api-key" type="password" placeholder="sk-ant-api03-..." style="flex:1;font-size:12px;" />
+              <button class="btn btn-primary" style="white-space:nowrap;font-size:12px;" onclick="saveAiKey()">저장</button>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:5px;">Anthropic Console에서 발급. localStorage에만 저장되며 서버로 전송되지 않습니다.</p>
+          </div>
+          <div class="ai-fields">
+            <div class="ai-field">
+              <label class="ai-field-label">✅ 타겟 대상 조건</label>
+              <textarea class="mock-input ai-textarea" id="ai-prompt-include"
+                placeholder="예) 최근 30일 내 구매한 고객&#10;이메일 수신 동의 여부 = Y&#10;멤버십 등급 = GOLD 이상"></textarea>
+            </div>
+            <div class="ai-field">
+              <label class="ai-field-label ai-field-label--exclude">🚫 타겟 대상 제외 조건</label>
+              <textarea class="mock-input ai-textarea" id="ai-prompt-exclude"
+                placeholder="예) 최근 7일 내 동일 메일 발송 이력 있는 고객&#10;수신 거부 상태인 고객"></textarea>
+            </div>
+          </div>
+          <div class="ai-action-row">
+            <div id="ai-msg" style="display:none;flex:1;"></div>
+            <button class="btn btn-primary" id="ai-gen-btn" onclick="generateQuery()" style="white-space:nowrap;margin-left:auto;">생성하기</button>
+          </div>
+        </div>
+      </div>
+      <div id="tsql-editor-container"></div>
       <div class="snippet-bar">
         <span class="snippet-label">삽입:</span>
         <button class="snippet-btn" data-e="tsql" data-k="top">TOP N</button>
@@ -59,31 +95,6 @@
         <button class="snippet-btn" data-e="tsql" data-k="cte">WITH CTE</button>
         <button class="snippet-btn" data-e="tsql" data-k="newid">RANDOM</button>
       </div>
-      <!-- AI 쿼리 생성 패널 -->
-      <div id="ai-panel" class="ai-panel">
-        <div class="ai-panel-header">
-          <span class="ai-panel-title">🤖 AI 쿼리 생성</span>
-          <div style="display:flex;gap:4px;align-items:center;">
-            <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" onclick="toggleAiKeyForm()">🔑 API 키</button>
-            <button id="ai-toggle-btn" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" onclick="toggleAiPanel()">▼ 접기</button>
-          </div>
-        </div>
-        <div id="ai-panel-body">
-          <div id="ai-key-form" style="display:none;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);">
-            <div style="display:flex;gap:6px;align-items:center;">
-              <input class="mock-input" id="ai-api-key" type="password" placeholder="sk-ant-api03-..." style="flex:1;font-size:12px;" />
-              <button class="btn btn-primary" style="white-space:nowrap;font-size:12px;" onclick="saveAiKey()">저장</button>
-            </div>
-            <p style="font-size:11px;color:var(--text-muted);margin-top:5px;">Anthropic Console에서 발급. localStorage에만 저장되며 서버로 전송되지 않습니다.</p>
-          </div>
-          <div class="ai-input-row">
-            <input class="mock-input" id="ai-prompt" placeholder="예) 최근 30일 내 구매하고 이메일 수신 동의한 고객" style="flex:1;" />
-            <button class="btn btn-primary" id="ai-gen-btn" onclick="generateQuery()" style="white-space:nowrap;">생성하기</button>
-          </div>
-          <div id="ai-msg" style="display:none;padding:0 12px 8px;"></div>
-        </div>
-      </div>
-      <div id="tsql-editor-container"></div>
     </div>
     <div class="result-panel">
       <div class="result-header">
@@ -215,6 +226,7 @@
   <div class="main">
     <!-- 좌측: 에디터 -->
     <div class="editor-panel">
+      <div id="mysql-editor-container"></div>
       <div class="snippet-bar">
         <span class="snippet-label">삽입:</span>
         <button class="snippet-btn" data-e="mysql" data-k="now">NOW()</button>
@@ -223,7 +235,6 @@
         <button class="snippet-btn" data-e="mysql" data-k="datediff">DATEDIFF</button>
         <button class="snippet-btn" data-e="mysql" data-k="var">[[변수]]</button>
       </div>
-      <div id="mysql-editor-container"></div>
     </div>
 
     <!-- 우측: 탭 + 액션 버튼 + 결과 -->
@@ -1640,7 +1651,8 @@ function _buildSchemaContext() {
 async function generateQuery() {
   const apiKey   = localStorage.getItem(AI_KEY_LS) || document.getElementById('ai-api-key').value.trim();
   const proxyUrl = sfmc.proxyUrl;
-  const prompt   = document.getElementById('ai-prompt').value.trim();
+  const include  = document.getElementById('ai-prompt-include').value.trim();
+  const exclude  = document.getElementById('ai-prompt-exclude').value.trim();
 
   if (!apiKey) {
     document.getElementById('ai-key-form').style.display = '';
@@ -1652,8 +1664,8 @@ async function generateQuery() {
     _showAiMsg('🔗 DE 연결 탭 → 프록시 URL을 먼저 설정하고 저장하세요.', 'error');
     return;
   }
-  if (!prompt) {
-    _showAiMsg('조건을 입력해주세요.', 'error');
+  if (!include && !exclude) {
+    _showAiMsg('타겟 대상 조건 또는 제외 조건을 입력해주세요.', 'error');
     return;
   }
 
@@ -1693,7 +1705,10 @@ ${schemaCtx}`;
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         system: systemPrompt,
-        messages: [{ role: 'user', content: `다음 조건의 타겟 대상자를 뽑는 SFMC T-SQL 쿼리를 작성해주세요:\n${prompt}` }],
+        messages: [{ role: 'user', content: [
+          include ? `[타겟 대상 조건]\n${include}` : '',
+          exclude ? `[타겟 대상 제외 조건]\n${exclude}` : '',
+        ].filter(Boolean).join('\n\n') }],
       }),
     });
     const data = await resp.json();
@@ -1715,9 +1730,6 @@ ${schemaCtx}`;
   }
 }
 
-document.getElementById('ai-prompt').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) generateQuery();
-});
 
 </script>
 </body>
