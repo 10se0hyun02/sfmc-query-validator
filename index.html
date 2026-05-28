@@ -1566,7 +1566,12 @@ function saveQuery() {
   const name = document.getElementById('save-name').value.trim();
   if (!name) { document.getElementById('save-name').style.borderColor = 'var(--error)'; return; }
   const saved = JSON.parse(localStorage.getItem(storageKey(savingMode)) || '{}');
-  saved[name] = { sql: getEditor(savingMode)?.getValue() || '', date: new Date().toLocaleDateString('ko-KR') };
+  const entry = { sql: getEditor(savingMode)?.getValue() || '', date: new Date().toLocaleDateString('ko-KR') };
+  if (savingMode === 'tsql') {
+    entry.include = document.getElementById('ai-prompt-include').value.trim();
+    entry.exclude = document.getElementById('ai-prompt-exclude').value.trim();
+  }
+  saved[name] = entry;
   localStorage.setItem(storageKey(savingMode), JSON.stringify(saved));
   closeModal('save-modal');
 }
@@ -1577,25 +1582,43 @@ function showLoadModal(mode) {
   const listEl = document.getElementById('saved-list');
   listEl.innerHTML = keys.length === 0
     ? '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px;">저장된 쿼리 없음</div>'
-    : keys.map(k => `
+    : keys.map(k => {
+        const e = saved[k];
+        const condPreview = [
+          e.include ? `<span style="color:var(--success);">✅ ${e.include.split('\n')[0].slice(0,30)}${e.include.length>30?'…':''}</span>` : '',
+          e.exclude ? `<span style="color:var(--error);">🚫 ${e.exclude.split('\n')[0].slice(0,30)}${e.exclude.length>30?'…':''}</span>` : '',
+        ].filter(Boolean).join('<br>');
+        return `
       <div class="saved-item" data-mode="${mode}" data-key="${k}">
-        <div>
+        <div style="min-width:0;">
           <div style="font-size:13px;font-weight:500;">${k}</div>
-          <div style="font-size:11px;color:var(--text-muted);">${saved[k].date}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${e.date}</div>
+          ${condPreview ? `<div style="font-size:11px;margin-top:4px;line-height:1.6;">${condPreview}</div>` : ''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
           <button class="btn btn-primary" style="font-size:11px;padding:3px 10px;" onclick="loadQuery(this)">불러오기</button>
           <button class="btn btn-danger" onclick="deleteQuery(this)">삭제</button>
         </div>
-      </div>`).join('');
+      </div>`;
+      }).join('');
   openModal('load-modal');
 }
 
 function loadQuery(btn) {
-  const item = btn.closest('.saved-item');
-  const saved = JSON.parse(localStorage.getItem(storageKey(item.dataset.mode)) || '{}');
+  const item  = btn.closest('.saved-item');
+  const mode  = item.dataset.mode;
+  const saved = JSON.parse(localStorage.getItem(storageKey(mode)) || '{}');
   const entry = saved[item.dataset.key];
-  if (entry) { getEditor(item.dataset.mode)?.setValue(entry.sql); closeModal('load-modal'); }
+  if (!entry) return;
+  getEditor(mode)?.setValue(entry.sql);
+  if (mode === 'tsql') {
+    document.getElementById('ai-prompt-include').value = entry.include || '';
+    document.getElementById('ai-prompt-exclude').value = entry.exclude || '';
+    if ((entry.include || entry.exclude) && document.getElementById('ai-panel-body').style.display === 'none') {
+      _setAiPanel(true);
+    }
+  }
+  closeModal('load-modal');
 }
 
 function deleteQuery(btn) {
