@@ -16,7 +16,6 @@ Salesforce Marketing Cloud의 **SQL Query Activity(Automation Studio)** 및 **Jo
 sfmc-query-validator/
 ├── index.html            ← 이 파일을 브라우저로 열기
 ├── validator.js          ← SFMC T-SQL / MySQL 규칙 엔진 + 자동수정
-├── data-schema.js        ← 고객사 DE 스키마 정의 (테이블명, CustomerKey, 컬럼 구조)
 ├── worker.js             ← Cloudflare Worker CORS 프록시 (배포용)
 ├── wrangler.toml         ← Cloudflare Workers 배포 설정
 └── style.css             ← 다크/라이트 테마 스타일
@@ -126,10 +125,7 @@ Journey Custom Activity에서 레거시 DB(Oracle → MySQL 연동)로 INSERT/UP
 
 | 유형 | 규칙 |
 |------|------|
-| ⚠️ 경고 | `SELECT TOP N` 없음 — 최대 행 수 제한 권장 |
 | ⚠️ 경고 | `SELECT *` 사용 — 필요한 컬럼만 명시 권장 |
-| ⚠️ 경고 | 쿼리 끝 세미콜론(`;`) — SFMC에서 오류 유발 가능 |
-| ⚠️ 경고 | `TRIM()` — SQL Server 2017 미만 미지원 가능 |
 | ℹ️ 정보 | `DATEDIFF()` 인수 순서 확인 (T-SQL ≠ MySQL) |
 
 ---
@@ -196,18 +192,7 @@ trailing 콤마 제거, 말미 세미콜론 추가, 작은따옴표 이스케이
 
 **MySQL 스니펫:** `NOW()`, `IFNULL`, `DATE_ADD`, `DATEDIFF`, `[[변수]]`
 
-Monaco Editor에서 SQL 함수명을 타이핑하면 자동완성도 동작합니다.  
-`data-schema.js`에 정의된 DE 테이블명·컬럼명도 자동완성에 포함됩니다.
-
----
-
-### 📋 DE 스키마 탭 (Automation 전용)
-
-Automation(T-SQL) 모드 우측 패널의 **📋 DE 스키마** 탭에서 `data-schema.js`에 정의된 DE 구조를 SFMC 연결 없이 바로 조회할 수 있습니다.
-
-- DE명을 입력하면 자동완성 드롭다운으로 빠르게 검색
-- DE 선택 시 컬럼명, 타입, 길이, PK 여부, 필수 여부를 테이블로 표시
-- `data-schema.js`의 `DATA_SCHEMA` 객체에 고객사별 스키마를 추가해 사용
+Monaco Editor에서 SQL 함수명을 타이핑하면 자동완성도 동작합니다.
 
 ---
 
