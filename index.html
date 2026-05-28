@@ -1697,21 +1697,24 @@ ${schemaCtx}`;
   ].filter(Boolean).join('\n\n');
 
   try {
+    const reqBody = {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userMsg }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+    };
     const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: userMsg }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-        }),
+        body: JSON.stringify(reqBody),
       }
     );
-    const data = await resp.json();
+    let data;
+    try { data = await resp.json(); } catch { data = {}; }
+    console.log('[Gemini]', resp.status, JSON.stringify(data).slice(0, 500));
     if (!resp.ok) {
-      const msg = data.error?.message || JSON.stringify(data).slice(0, 200);
+      const msg = data.error?.message || data.error?.status || JSON.stringify(data).slice(0, 300);
       throw new Error(`HTTP ${resp.status}: ${msg}`);
     }
 
