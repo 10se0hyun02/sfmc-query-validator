@@ -1686,34 +1686,75 @@ NEVER treat DEs as Salesforce objects. They are flat SQL tables joined with expl
 - Enclose every DE name in square brackets: [RC_Order].
 - Missing column → add -- ⚠ 컬럼 없음 comment, skip that condition.
 
-=== EXACT FORMATTING (copy this style precisely) ===
+=== EXACT FORMATTING (follow precisely) ===
 Right-align SQL keywords to 6 chars, then 2 spaces before content.
+Use Korean Standard Time: DATEADD(HOUR, 9, GETUTCDATE()) instead of GETDATE().
 
-SELECT  a.ColA,
-        a.ColB,
-        b.ColC
-  FROM  [DE_A] a
- INNER JOIN [DE_B] b
-    ON  b.KeyCol = a.KeyCol
-  LEFT JOIN [DE_C] c
-    ON  c.KeyCol = a.KeyCol
- WHERE  a.Col1 = 'value'
-   AND  a.DateCol >= DATEADD(DAY, -30, GETDATE())
-   AND  NOT EXISTS (
-         SELECT  1
-           FROM  [DE_D] d
-          WHERE  d.KeyCol = a.KeyCol
-        )
+=== QUERY STRUCTURE — always use this 4-layer pattern for complex queries ===
 
-Keyword alignment rules:
-- SELECT, FROM, WHERE, HAVING, GROUP, ORDER → right-pad to 6 chars + 2 spaces (SELECT·· / ··FROM·· / ·WHERE·· / ···AND·· / ····OR··)
-- Continuation columns after SELECT → indent 8 spaces to align with first column
-- INNER JOIN / LEFT JOIN → on its own line; ON → "····ON··" (4 spaces + ON + 2 spaces)
-- AND / OR → "···AND··" / "····OR··" to align under WHERE
+SELECT  FIN.*
+  FROM  (
+        SELECT  BASE.*
+                ,ROW_NUMBER() OVER(PARTITION BY BASE.MobilePhone
+                                       ORDER BY BASE.IsMobileVerified__c DESC
+                                               ,BASE.MemberJoinDate__c   DESC) AS ROW_NUM
+          FROM  (
+                SELECT  T0.Col1
+                        ,T0.Col2
+                        ,T1.Last_Purchase_Date
+                        ,T1.Last_Order_Date
+                        ,MAX(CASE
+                                WHEN T1.Last_Purchase_Date >= DATEFROMPARTS(YEAR(DATEADD(HOUR, 9, GETUTCDATE())) - 5, 1, 1)
+                                 AND T1.Last_Purchase_Date <  DATEFROMPARTS(YEAR(DATEADD(HOUR, 9, GETUTCDATE())) - 3, 1, 1)
+                                THEN 'Y' ELSE 'N'
+                             END) AS Lapsed_YN
+                        ,MAX(CASE
+                                WHEN DATEDIFF(DAY, T1.Last_Order_Date, CAST(DATEADD(HOUR, 9, GETUTCDATE()) AS DATE)) <= 90
+                                THEN 'Y' ELSE 'N'
+                             END) AS Recent_Order_YN
+                  FROM  (
+                        -- T0: 대상 고객 기본 조건
+                        SELECT  C.Col1
+                                ,C.Col2
+                          FROM  [Contact_DE] AS C
+                          JOIN  [Account_DE] AS A
+                            ON  C.AccountId = A.Id
+                         WHERE  A.StoreType__c IN ('코드1', '코드2')
+                           AND  C.IsAgreed__c = 'True'
+                        ) AS T0
+                  LEFT
+                  JOIN  (
+                        -- T1: 주문/구매 이력 집계
+                        SELECT  MemberNo__c AS ContactKey
+                                ,MAX(CASE WHEN SaleNO__c IS NOT NULL THEN CAST(DATEADD(HOUR, 15, EndDate) AS DATE) END) AS Last_Purchase_Date
+                                ,MAX(CASE WHEN OrderNo__c IS NOT NULL AND Status = 'orderSuccess' THEN CAST(DATEADD(HOUR, 15, PoDate) AS DATE) END) AS Last_Order_Date
+                          FROM  [Order_DE]
+                         WHERE  IsDeleted__c = 'False'
+                         GROUP
+                            BY  MemberNo__c
+                        ) AS T1
+                    ON  T0.MemberNo__c = T1.ContactKey
+                 GROUP
+                    BY  T0.Col1, T0.Col2, T1.Last_Purchase_Date, T1.Last_Order_Date
+                ) AS BASE
+         WHERE  Lapsed_YN = 'Y'
+           AND  Recent_Order_YN = 'N'
+        ) AS FIN
+ WHERE  ROW_NUM = 1
+
+Layer roles:
+- T0 subquery: contact base filter (DE JOIN, basic WHERE conditions)
+- T1 subquery: order/purchase history aggregated by member key (GROUP BY)
+- BASE: T0 LEFT JOIN T1, compute flag columns with MAX(CASE WHEN ... END), GROUP BY all non-agg columns
+- FIN: filter BASE by flags, add ROW_NUMBER() OVER(PARTITION BY phone) for deduplication, WHERE ROW_NUM = 1
+
+Simple queries (single DE, no aggregation) may omit T1/BASE/FIN layers.
 
 === T-SQL FUNCTIONS ===
-- GETDATE()  DATEADD(DAY,-30,GETDATE())  DATEDIFF(DAY,col,GETDATE())
-- ISNULL(col,'')  IIF(cond,a,b)  CAST(col AS INT)
+- KST now: DATEADD(HOUR, 9, GETUTCDATE())
+- Year boundary: DATEFROMPARTS(YEAR(DATEADD(HOUR,9,GETUTCDATE()))-N, 1, 1)
+- Date diff: DATEDIFF(DAY, col, CAST(DATEADD(HOUR,9,GETUTCDATE()) AS DATE))
+- ISNULL(col,'')  IIF(cond,a,b)  CAST(col AS DATE)
 
 === OUTPUT ===
 Output ONLY the SQL query. No explanation, no markdown, no code fences.
