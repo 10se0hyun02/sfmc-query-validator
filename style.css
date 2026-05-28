@@ -688,3 +688,63 @@ body.light .qt-icon { background: rgba(1,118,211,0.1); }
 body.light .query-tab.active .qt-icon { background: rgba(1,118,211,0.2); }
 body.light .qt-close:hover { background: rgba(184,56,32,0.14); }
 body.light .qt-add:hover { background: rgba(1,118,211,0.09); border-color: var(--border); }
+
+/* ── Count Jobs bar (백그라운드 모수 확인) ─────────────────────────── */
+#count-jobs-bar {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-height: 34px;
+}
+#count-jobs-bar.has-jobs { display: flex; }
+
+.cj-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px 4px 11px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  white-space: nowrap;
+  cursor: default;
+}
+.cj-chip.running { border-color: rgba(112,204,224,0.55); color: var(--info); }
+.cj-chip.done    { border-color: rgba(112,200,152,0.55); color: var(--success); cursor: pointer; }
+.cj-chip.error   { border-color: rgba(240,144,112,0.55); color: var(--error);   cursor: pointer; }
+.cj-chip.done:hover  { background: rgba(112,200,152,0.1); }
+.cj-chip.error:hover { background: rgba(240,144,112,0.1); }
+
+.cj-spinner {
+  width: 11px; height: 11px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: cj-spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes cj-spin { to { transform: rotate(360deg); } }
+
+.cj-dismiss {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 3px;
+  opacity: 0.55;
+  line-height: 1;
+  border-radius: 3px;
+  margin-left: 1px;
+}
+.cj-dismiss:hover { opacity: 1; background: rgba(255,255,255,0.12); }
+
+body.light .cj-chip { background: #fff; }
+body.light .cj-dismiss:hover { background: rgba(0,0,0,0.07); }
