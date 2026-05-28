@@ -1847,6 +1847,42 @@ async function checkCount() {
   }
 }
 
+// ── 진단용 헬퍼 ───────────────────────────────────────────────────
+async function _sampleDEsFromQuery(sql, subdomain, token) {
+  if (typeof DATA_SCHEMA === 'undefined' || !subdomain || !token) return '';
+  const deNames = [...new Set((sql.match(/\[(\w+)\]/g) || []).map(m => m.slice(1, -1)))];
+  const results = [];
+  for (const deName of deNames.slice(0, 4)) {
+    const schema = DATA_SCHEMA[deName];
+    if (!schema?.customerKey) continue;
+    try {
+      const url = `https://${subdomain}.rest.marketingcloudapis.com/data/v1/customobjectdata/key/${encodeURIComponent(schema.customerKey)}/rowset?$pageSize=5`;
+      const resp = await sfmcFetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await resp.json();
+      if (!data.items?.length) { results.push(`[${deName}]: 데이터 없음 (0행)`); continue; }
+      const colVals = {};
+      data.items.forEach(item => {
+        const row = { ...(item.keys || {}), ...(item.values || {}) };
+        Object.entries(row).forEach(([col, val]) => {
+          if (!colVals[col]) colVals[col] = new Set();
+          if (val !== null && val !== '') colVals[col].add(String(val).slice(0, 40));
+        });
+      });
+      const colLines = Object.entries(colVals)
+        .filter(([, v]) => v.size > 0)
+        .map(([col, vals]) => `  ${col}: ${[...vals].map(v => `'${v}'`).join(', ')}`)
+        .join('\n');
+      results.push(`[${deName}] (${data.items.length}행 샘플 — 실제 저장값):\n${colLines}`);
+    } catch(e) { /* skip */ }
+  }
+  return results.join('\n\n');
+}
+
+function _loadDiagnosticQuery(encodedSql) {
+  const sql = decodeURIComponent(encodedSql);
+  if (tsqlEditor) { tsqlEditor.setValue(sql); tsqlEditor.focus(); }
+}
+
 // ── 에디터 하이라이트 ─────────────────────────────────────────────
 let _verifyDecIds = [];
 function _highlightVerifySnippet(snippet) {
@@ -1895,19 +1931,25 @@ async function verifyConditions() {
   document.getElementById('tsql-result').innerHTML = `
     <div style="padding:24px;text-align:center;color:var(--text-muted);">
       <div style="font-size:24px;margin-bottom:10px;">🎯</div>
-      <div style="font-size:13px;">AI가 쿼리와 조건을 대조 중입니다...</div>
+      <div id="verify-loading-msg" style="font-size:13px;">준비 중...</div>
     </div>`;
+  function _updateVerifyLoading(msg) {
+    const el = document.getElementById('verify-loading-msg');
+    if (el) el.textContent = msg;
+  }
 
   const conditionText = [
     include ? `[포함 조건]\n${include}` : '',
     exclude ? `[제외 조건]\n${exclude}` : '',
   ].filter(Boolean).join('\n\n');
 
-  const systemPrompt = `You are an SFMC T-SQL query reviewer. Do three things:
+  const systemPrompt = `You are an SFMC T-SQL query reviewer. Do the following:
 
 1. Write a beginner-friendly structured explanation of what the SQL query does.
 2. Check whether each stated target condition is correctly implemented in the SQL.
 3. Extract additional conditions/logic in the SQL NOT mentioned in the target conditions.
+4. If DE sample data is provided: identify filter value mismatches (e.g. query uses '백화점' but actual stored value is '08'). Report as "issues".
+5. Generate 3–5 diagnostic COUNT(*) SQL queries — one per key layer/condition — to help identify which step is causing 0 results. Each must be a standalone valid SFMC T-SQL SELECT.
 
 Respond ONLY with a valid JSON object in this exact format (no markdown, no explanation):
 {
@@ -1933,12 +1975,27 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no expl
   "summary": "전체 한 줄 요약"
 }
 status: "pass"=✅반영됨 / "fail"=❌미반영 / "warn"=⚠️불확실 / "extra"=🔍추가확인
-snippet: copy the EXACT line(s) from the SQL query that implement the condition. Use the line number prefix to find it. If multiple lines, join with \\n. null if not found.
+snippet: copy the EXACT line(s) from the SQL query. Use line number prefix to find it. null if not found.
 verdict: "PASS" if all stated conditions implemented, else "FAIL".
+
+Also add these fields:
+"issues": [{"severity":"high"|"medium"|"low","title":"이슈 제목","detail":"상세 설명","suggestion":"수정 방법"}],
+"diagnostics": [{"label":"진단 설명 (예: T0 기본 필터)","sql":"SELECT COUNT(*) AS 모수 FROM ..."}]
+issues: only include real problems found (value mismatch, null handling, join key mismatch, impossible date range). Empty array if none.
+diagnostics: always generate, simplify each layer to a standalone COUNT query.
 Respond in Korean.`;
 
   const numberedSql = sql.split('\n').map((l, i) => `${String(i+1).padStart(3,' ')}│ ${l}`).join('\n');
-  const userMsg = `=== 타겟 조건 ===\n${conditionText}\n\n=== SQL 쿼리 (줄번호 포함) ===\n${numberedSql}`;
+  const token     = sfmc.shared.token     || sfmc.tsql?.token;
+  const subdomain = sfmc.shared.subdomain || sfmc.tsql?.subdomain;
+  let sampleSection = '';
+  if (token && subdomain) {
+    _updateVerifyLoading('SFMC DE 샘플 데이터 수집 중...');
+    const sampleData = await _sampleDEsFromQuery(sql, subdomain, token);
+    if (sampleData) sampleSection = `\n\n=== DE 실제 저장값 (샘플) ===\n${sampleData}`;
+  }
+  _updateVerifyLoading('AI 분석 중...');
+  const userMsg = `=== 타겟 조건 ===\n${conditionText}\n\n=== SQL 쿼리 (줄번호 포함) ===\n${numberedSql}${sampleSection}`;
 
   try {
     let text = '';
@@ -2083,10 +2140,50 @@ function _renderVerifyResult(result) {
       ${extra.map((item, i) => renderItem(item, i + stated.length)).join('')}
     </div>`;
 
+  // ── issues ──────────────────────────────────────────────────────
+  const issues = result.issues || [];
+  const issuesHtml = issues.length === 0 ? '' : `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--error);margin-bottom:8px;">🚨 잠재적 데이터 이슈</div>
+      ${issues.map(iss => {
+        const sevColor = iss.severity === 'high' ? 'var(--error)' : iss.severity === 'medium' ? 'var(--warning)' : 'var(--info)';
+        const sevLabel = iss.severity === 'high' ? '높음' : iss.severity === 'medium' ? '중간' : '낮음';
+        return `
+          <div style="border:1px solid ${sevColor};border-radius:6px;padding:10px 12px;margin-bottom:6px;background:color-mix(in srgb,${sevColor} 8%,transparent);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span style="font-size:11px;font-weight:700;color:${sevColor};background:color-mix(in srgb,${sevColor} 15%,transparent);padding:1px 7px;border-radius:10px;">위험도 ${sevLabel}</span>
+              <span style="font-size:12px;font-weight:600;color:var(--text);">${iss.title}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">${iss.detail}</div>
+            ${iss.suggestion ? `<div style="font-size:12px;color:var(--accent);">💡 ${iss.suggestion}</div>` : ''}
+          </div>`;
+      }).join('')}
+    </div>`;
+
+  // ── diagnostics ─────────────────────────────────────────────────
+  const diagnostics = result.diagnostics || [];
+  const diagnosticsHtml = diagnostics.length === 0 ? '' : `
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">🔬 단계별 진단 쿼리</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">각 쿼리를 에디터에 넣고 🔢 모수 확인으로 실행하면 어느 단계에서 0이 되는지 파악할 수 있습니다.</div>
+      ${diagnostics.map((d, i) => {
+        const enc = encodeURIComponent(d.sql);
+        return `
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:600;color:var(--text);">${i+1}. ${d.label}</span>
+              <button class="btn btn-secondary diag-load-btn" data-sql="${enc}" style="font-size:11px;padding:2px 10px;white-space:nowrap;">에디터에 넣기</button>
+            </div>
+            <code style="display:block;font-size:11px;font-family:'Cascadia Code','Fira Code',monospace;color:var(--text-muted);white-space:pre;overflow-x:auto;max-height:80px;">${d.sql.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code>
+          </div>`;
+      }).join('')}
+    </div>`;
+
   const resultEl = document.getElementById('tsql-result');
   resultEl.innerHTML = `
     <div style="padding:14px;">
       ${explanationHtml}
+      ${issuesHtml}
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
         <span style="font-size:13px;font-weight:600;color:var(--text);">🎯 조건 검증 결과</span>
         <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;
@@ -2097,9 +2194,13 @@ function _renderVerifyResult(result) {
       </div>
       ${summary ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">${summary}</div>` : ''}
       ${statedHtml}${extraHtml}
+      ${diagnosticsHtml}
     </div>`;
   resultEl.querySelectorAll('.verify-goto-btn').forEach(btn => {
     btn.addEventListener('click', () => _highlightVerifySnippet(btn.dataset.snippet));
+  });
+  resultEl.querySelectorAll('.diag-load-btn').forEach(btn => {
+    btn.addEventListener('click', () => _loadDiagnosticQuery(btn.dataset.sql));
   });
 }
 
