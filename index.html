@@ -1720,11 +1720,41 @@ async function _performQueryDef(subdomain, token, qdKey) {
     </PerformRequestMsg>`);
 }
 
-async function _pollCountResult(subdomain, token, deKey) {
-  const timeout = 180000;
+async function _getQueryDefStatus(subdomain, token, qdKey) {
+  try {
+    const doc = await _sfmcSoap(subdomain, token, 'Retrieve', `
+      <RetrieveRequestMsg xmlns="http://exacttarget.com/wsdl/partnerAPI">
+        <RetrieveRequest>
+          <ObjectType>QueryDefinition</ObjectType>
+          <Properties>CustomerKey</Properties>
+          <Properties>Status</Properties>
+          <Filter xsi:type="SimpleFilterPart" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <Property>CustomerKey</Property>
+            <SimpleOperator>equals</SimpleOperator>
+            <Value>${qdKey}</Value>
+          </Filter>
+        </RetrieveRequest>
+      </RetrieveRequestMsg>`);
+    return doc.querySelector('Results > Status')?.textContent || '';
+  } catch(e) { return ''; }
+}
+
+async function _pollCountResult(subdomain, token, deKey, qdKey) {
+  const timeout = 300000; // 5분
   const start   = Date.now();
+  let   polls   = 0;
   while (Date.now() - start < timeout) {
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 4000));
+    polls++;
+
+    // 30초마다 QueryDef 상태 확인해서 에러 조기 감지
+    if (polls % 8 === 0) {
+      const status = await _getQueryDefStatus(subdomain, token, qdKey);
+      if (status && !['Active','Running','InActive',''].includes(status)) {
+        throw new Error(`SFMC Query 실패 (Status: ${status}). 쿼리 문법을 확인하세요.`);
+      }
+    }
+
     try {
       const url  = `https://${subdomain}.rest.marketingcloudapis.com/data/v1/customobjectdata/key/${encodeURIComponent(deKey)}/rowset?$pageSize=1`;
       const resp = await sfmcFetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -1734,10 +1764,12 @@ async function _pollCountResult(subdomain, token, deKey) {
         return row['모수'] ?? Object.values(row)[0] ?? 0;
       }
     } catch(e) { /* 계속 폴링 */ }
+
     const elapsed = Math.floor((Date.now() - start) / 1000);
-    _updateCountStep(`SFMC 쿼리 실행 중... <span style="color:var(--text)">${elapsed}초</span> 경과<br><small style="color:var(--text-muted);">쿼리 복잡도에 따라 최대 3분 소요</small>`);
+    const remain  = Math.ceil((timeout - (Date.now() - start)) / 1000);
+    _updateCountStep(`SFMC 쿼리 실행 중... <span style="color:var(--text)">${elapsed}초</span> 경과<br><small style="color:var(--text-muted);">남은 대기 시간 최대 ${remain}초</small>`);
   }
-  throw new Error('시간 초과 (3분). SFMC에서 직접 확인하거나 쿼리를 단순화하세요.');
+  throw new Error('시간 초과 (5분). SFMC Automation Studio에서 직접 쿼리 실행 결과를 확인하세요.');
 }
 
 async function _deleteSoapObject(subdomain, token, type, key) {
@@ -1779,7 +1811,7 @@ async function checkCount() {
     await _performQueryDef(subdomain, token, qdKey);
 
     _updateCountStep('3/3 결과 대기 중...');
-    const count = await _pollCountResult(subdomain, token, deKey);
+    const count = await _pollCountResult(subdomain, token, deKey, qdKey);
     _setCountContent('result', count);
   } catch(err) {
     _setCountContent('error', err.message);
