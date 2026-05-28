@@ -197,6 +197,10 @@ body.light .btn-count { background: #e8f6fb; color: #0070d2; border-color: #0070
 .btn-verify:hover { background: rgba(180,140,255,0.18); opacity: 1; }
 body.light .btn-verify { background: #f3eeff; color: #6e3fc7; border-color: #6e3fc7; }
 
+/* 조건 검증 에디터 하이라이트 */
+.verify-hl-line { background: rgba(245,200,112,0.18) !important; border-left: 3px solid var(--warning) !important; }
+body.light .verify-hl-line { background: rgba(200,130,0,0.10) !important; }
+
 /* Run */
 .btn-run { background: var(--success); color: #0a1c35; border-color: var(--success); }
 

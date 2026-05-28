@@ -1847,6 +1847,36 @@ async function checkCount() {
   }
 }
 
+// ── 에디터 하이라이트 ─────────────────────────────────────────────
+let _verifyDecIds = [];
+function _highlightVerifySnippet(snippet) {
+  if (!tsqlEditor || !snippet) return;
+  _clearVerifyHighlight();
+  const model = tsqlEditor.getModel();
+  if (!model) return;
+  const searchLine = snippet.trim().split('\n')[0].trim();
+  if (!searchLine) return;
+  const matches = model.findMatches(searchLine, false, false, false, null, true);
+  if (!matches.length) return;
+  const range = matches[0].range;
+  const lineCount = snippet.trim().split('\n').length;
+  const fullRange = new monaco.Range(range.startLineNumber, 1, range.startLineNumber + lineCount - 1, model.getLineMaxColumn(range.startLineNumber + lineCount - 1));
+  _verifyDecIds = tsqlEditor.deltaDecorations([], [{
+    range: fullRange,
+    options: {
+      isWholeLine: true,
+      className: 'verify-hl-line',
+      overviewRuler: { color: 'rgba(245,200,112,0.9)', position: 1 },
+    },
+  }]);
+  tsqlEditor.revealLineInCenter(range.startLineNumber, 0);
+}
+function _clearVerifyHighlight() {
+  if (tsqlEditor && _verifyDecIds.length) {
+    _verifyDecIds = tsqlEditor.deltaDecorations(_verifyDecIds, []);
+  }
+}
+
 // ── 조건 검증 ─────────────────────────────────────────────────────
 async function verifyConditions() {
   if (!tsqlEditor) return;
@@ -1894,19 +1924,21 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no expl
     ]
   },
   "items": [
-    {"label": "조건 요약 (15자 이내)", "status": "pass",  "detail": "어떤 WHERE/JOIN 로직으로 구현됐는지"},
-    {"label": "조건 요약",             "status": "fail",  "detail": "어떤 부분이 빠졌거나 잘못됐는지"},
-    {"label": "조건 요약",             "status": "warn",  "detail": "구현됐으나 확인 필요한 이유"},
-    {"label": "추가조건 요약",         "status": "extra", "detail": "타겟 조건엔 없지만 쿼리에 있는 내용"}
+    {"label": "조건 요약 (15자 이내)", "status": "pass",  "detail": "어떤 WHERE/JOIN 로직으로 구현됐는지", "snippet": "쿼리에서 해당 조건을 구현한 SQL 줄을 그대로 복사 (없으면 null)"},
+    {"label": "조건 요약",             "status": "fail",  "detail": "어떤 부분이 빠졌거나 잘못됐는지",   "snippet": null},
+    {"label": "조건 요약",             "status": "warn",  "detail": "구현됐으나 확인 필요한 이유",       "snippet": "해당 SQL 줄 복사"},
+    {"label": "추가조건 요약",         "status": "extra", "detail": "타겟 조건엔 없지만 쿼리에 있는 내용", "snippet": "해당 SQL 줄 복사"}
   ],
   "verdict": "PASS",
   "summary": "전체 한 줄 요약"
 }
 status: "pass"=✅반영됨 / "fail"=❌미반영 / "warn"=⚠️불확실 / "extra"=🔍추가확인
+snippet: copy the EXACT line(s) from the SQL query that implement the condition. Use the line number prefix to find it. If multiple lines, join with \\n. null if not found.
 verdict: "PASS" if all stated conditions implemented, else "FAIL".
 Respond in Korean.`;
 
-  const userMsg = `=== 타겟 조건 ===\n${conditionText}\n\n=== SQL 쿼리 ===\n${sql}`;
+  const numberedSql = sql.split('\n').map((l, i) => `${String(i+1).padStart(3,' ')}│ ${l}`).join('\n');
+  const userMsg = `=== 타겟 조건 ===\n${conditionText}\n\n=== SQL 쿼리 (줄번호 포함) ===\n${numberedSql}`;
 
   try {
     let text = '';
@@ -2012,29 +2044,47 @@ function _renderVerifyResult(result) {
   const stated = items.filter(i => i.status !== 'extra');
   const extra  = items.filter(i => i.status === 'extra');
 
-  const renderItem = item => {
+  const renderItem = (item, idx) => {
     const icon = { pass:'✅', fail:'❌', warn:'⚠️', extra:'🔍' }[item.status] || '🔍';
     const cls  = { pass:'info', fail:'error', warn:'warning' }[item.status] || '';
+    const snippetAttr = item.snippet
+      ? `data-snippet="${item.snippet.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/\n/g,'&#10;')}"`
+      : '';
+    const gotoBtn = item.snippet
+      ? `<button class="verify-goto-btn" ${snippetAttr} title="에디터에서 해당 줄 보기" style="margin-left:auto;flex-shrink:0;background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-size:11px;padding:1px 7px;cursor:pointer;">↗ 보기</button>`
+      : '';
+    const snippetBlock = item.snippet
+      ? `<code style="display:block;margin-top:5px;font-size:11px;font-family:'Cascadia Code','Fira Code',monospace;color:var(--accent);background:var(--surface);border-radius:4px;padding:4px 8px;white-space:pre;overflow-x:auto;">${item.snippet.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code>`
+      : '';
     if (item.status === 'extra') return `
       <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:2px;">${icon} ${item.label}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-muted);">${icon} ${item.label}</span>
+          ${gotoBtn}
+        </div>
         <div style="font-size:12px;color:var(--text-muted);">${item.detail}</div>
+        ${snippetBlock}
       </div>`;
     return `
       <div class="issue-item ${cls}" style="margin-bottom:6px;">
-        <span class="issue-badge ${cls}">${icon} ${item.label}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="issue-badge ${cls}">${icon} ${item.label}</span>
+          ${gotoBtn}
+        </div>
         <div class="issue-msg">${item.detail}</div>
+        ${snippetBlock}
       </div>`;
   };
 
-  const statedHtml = stated.map(renderItem).join('');
+  const statedHtml = stated.map((item, i) => renderItem(item, i)).join('');
   const extraHtml  = extra.length === 0 ? '' : `
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
       <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.04em;">🔍 쿼리에 적용된 추가 조건</div>
-      ${extra.map(renderItem).join('')}
+      ${extra.map((item, i) => renderItem(item, i + stated.length)).join('')}
     </div>`;
 
-  document.getElementById('tsql-result').innerHTML = `
+  const resultEl = document.getElementById('tsql-result');
+  resultEl.innerHTML = `
     <div style="padding:14px;">
       ${explanationHtml}
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
@@ -2048,6 +2098,9 @@ function _renderVerifyResult(result) {
       ${summary ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">${summary}</div>` : ''}
       ${statedHtml}${extraHtml}
     </div>`;
+  resultEl.querySelectorAll('.verify-goto-btn').forEach(btn => {
+    btn.addEventListener('click', () => _highlightVerifySnippet(btn.dataset.snippet));
+  });
 }
 
 // ── AI Query Generator ────────────────────────────────────────────
