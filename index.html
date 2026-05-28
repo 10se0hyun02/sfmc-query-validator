@@ -56,15 +56,16 @@
         <div id="ai-panel-body">
           <div id="ai-key-form" style="display:none;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);">
             <div style="display:flex;gap:6px;align-items:center;">
-              <input class="mock-input" id="ai-api-key" type="password" placeholder="gsk_... / sk-or-... / AIzaSy..." style="flex:1;font-size:12px;" />
+              <input class="mock-input" id="ai-api-key" type="password" placeholder="csk-... / gsk_... / sk-or-... / AIzaSy..." style="flex:1;font-size:12px;" />
               <button class="btn btn-primary" style="white-space:nowrap;font-size:12px;" onclick="saveAiKey()">저장</button>
             </div>
             <div id="ai-key-status" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;"></div>
             <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+              <strong style="color:var(--success);">Cerebras ⭐ (무료·1M 토큰/일)</strong> cerebras.ai → API Keys<br>
               <strong style="color:var(--accent);">Groq (무료)</strong> console.groq.com → API Keys<br>
-              <strong style="color:var(--accent);">OpenRouter (권장·무료티어)</strong> openrouter.ai → Keys<br>
-              <span>Gemini: aistudio.google.com → Get API key</span><br>
-              여러 키를 저장하면 Groq 한도 초과 시 <strong style="color:var(--success);">자동 전환</strong>됩니다.
+              <strong style="color:var(--accent);">OpenRouter (무료티어)</strong> openrouter.ai → Keys<br>
+              <span style="color:var(--text-muted);">Gemini: aistudio.google.com → Get API key</span><br>
+              여러 키 저장 시 한도 초과되면 <strong style="color:var(--success);">자동 전환</strong>됩니다.
             </p>
           </div>
           <div class="ai-fields">
@@ -2387,6 +2388,7 @@ function _renderVerifyResult(result) {
 
 // ── AI Query Generator ────────────────────────────────────────────
 const AI_OPEN_LS    = 'sfmc_ai_panel_open';
+const AI_KEY_CEREBRAS = 'sfmc_ai_key_cerebras';
 const AI_KEY_GROQ   = 'sfmc_ai_key_groq';
 const AI_KEY_OR     = 'sfmc_ai_key_or';
 const AI_KEY_GEMINI = 'sfmc_ai_key_gemini';
@@ -2394,29 +2396,31 @@ const AI_KEY_LS     = 'sfmc_ai_apikey'; // legacy — migrate on load
 
 function _aiKeyProvider(k) {
   if (!k) return null;
+  if (k.startsWith('csk-'))   return 'cerebras';
   if (k.startsWith('gsk_'))   return 'groq';
   if (k.startsWith('sk-or-')) return 'or';
   if (k.startsWith('AIza'))   return 'gemini';
   return null;
 }
 function _aiStorageKey(provider) {
-  return { groq: AI_KEY_GROQ, or: AI_KEY_OR, gemini: AI_KEY_GEMINI }[provider];
+  return { cerebras: AI_KEY_CEREBRAS, groq: AI_KEY_GROQ, or: AI_KEY_OR, gemini: AI_KEY_GEMINI }[provider];
 }
 function _getAiKey(provider) {
   return localStorage.getItem(_aiStorageKey(provider)) || null;
 }
-// 우선순위 순서로 사용 가능한 키 목록 반환
+// 우선순위 순서로 사용 가능한 키 목록 반환 (Cerebras 최우선)
 function _getAiKeyList() {
-  return ['groq','or','gemini'].map(p => _getAiKey(p)).filter(Boolean);
+  return ['cerebras','groq','or','gemini'].map(p => _getAiKey(p)).filter(Boolean);
 }
 
 function _renderKeyStatus() {
   const el = document.getElementById('ai-key-status');
   if (!el) return;
   const providers = [
-    { id: 'groq',   label: 'Groq',        color: 'var(--info)' },
-    { id: 'or',     label: 'OpenRouter',   color: 'var(--success)' },
-    { id: 'gemini', label: 'Gemini',       color: 'var(--warning)' },
+    { id: 'cerebras', label: 'Cerebras ⭐', color: 'var(--success)' },
+    { id: 'groq',     label: 'Groq',        color: 'var(--info)' },
+    { id: 'or',       label: 'OpenRouter',  color: 'var(--accent)' },
+    { id: 'gemini',   label: 'Gemini',      color: 'var(--warning)' },
   ];
   el.innerHTML = providers.map(p => {
     const has = !!_getAiKey(p.id);
@@ -2468,11 +2472,11 @@ function saveAiKey() {
   const key = document.getElementById('ai-api-key').value.trim();
   if (!key) return;
   const provider = _aiKeyProvider(key);
-  if (!provider) { _showAiMsg('키 형식 불인식. gsk_ / sk-or- / AIzaSy 로 시작해야 합니다.', 'error'); return; }
+  if (!provider) { _showAiMsg('키 형식 불인식. csk- / gsk_ / sk-or- / AIzaSy 로 시작해야 합니다.', 'error'); return; }
   localStorage.setItem(_aiStorageKey(provider), key);
   document.getElementById('ai-api-key').value = '';
   _renderKeyStatus();
-  const names = { groq: 'Groq', or: 'OpenRouter', gemini: 'Gemini' };
+  const names = { cerebras: 'Cerebras', groq: 'Groq', or: 'OpenRouter', gemini: 'Gemini' };
   _showAiMsg(`${names[provider]} 키가 저장되었습니다.`, 'success');
 }
 
@@ -2510,6 +2514,10 @@ async function _callAIWithFallback(messages, { maxTokens = 1024, jsonMode = fals
   for (const apiKey of keys) {
     const provider = _aiKeyProvider(apiKey);
     try {
+      if (provider === 'cerebras') {
+        const model = jsonMode ? 'llama-3.3-70b' : 'llama3.1-8b';
+        return await _callOpenAICompat(apiKey, 'https://api.cerebras.ai/v1/chat/completions', model, messages, maxTokens, jsonMode);
+      }
       if (provider === 'groq') {
         const model = jsonMode ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
         return await _callOpenAICompat(apiKey, 'https://api.groq.com/openai/v1/chat/completions', model, messages, maxTokens, jsonMode);
@@ -2562,7 +2570,7 @@ async function _callAIWithFallback(messages, { maxTokens = 1024, jsonMode = fals
     } catch (err) {
       lastErr = err;
       if (err.status === 429) {
-        const providerName = { groq: 'Groq', or: 'OpenRouter', gemini: 'Gemini' }[provider];
+        const providerName = { cerebras: 'Cerebras', groq: 'Groq', or: 'OpenRouter', gemini: 'Gemini' }[provider];
         console.warn(`[AI] ${providerName} 429 → 다음 키로 폴백`);
         _showAiMsg(`${providerName} 한도 초과 → 다음 키로 자동 전환 중...`, 'info');
         continue; // 다음 키 시도
