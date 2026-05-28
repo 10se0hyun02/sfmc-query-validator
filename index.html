@@ -615,7 +615,7 @@ require(['vs/editor/editor.main'], function () {
 
   tsqlEditor = monaco.editor.create(document.getElementById('tsql-editor-container'), {
     ...base,
-    value: 'SELECT\n    c.ContactKey,\n    c.Email\nFROM [Contact_DE] c\nWHERE c.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
+    value: 'SELECT  c.ContactKey,\n        c.Email\n  FROM  [Contact_DE] c\n WHERE  c.CreatedDate >= DATEADD(DAY, -30, GETDATE())',
   });
 
   mysqlEditor = monaco.editor.create(document.getElementById('mysql-editor-container'), {
