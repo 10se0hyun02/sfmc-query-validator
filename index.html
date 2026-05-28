@@ -1756,7 +1756,10 @@ ${schemaCtx}`;
         body: JSON.stringify(reqBody),
       });
       try { data = await resp.json(); } catch { data = {}; }
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${data.error?.message || JSON.stringify(data).slice(0, 200)}`);
+      if (!resp.ok) {
+        if (resp.status === 429) throw new Error('Gemini 무료 할당량이 없습니다. 🔑 API 키를 Groq 키(gsk_...)로 교체하세요. console.groq.com에서 무료 발급');
+        throw new Error(`HTTP ${resp.status}: ${data.error?.message || JSON.stringify(data).slice(0, 200)}`);
+      }
       sql = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
     } else {
