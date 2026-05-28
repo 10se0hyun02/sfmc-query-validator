@@ -1704,13 +1704,16 @@ ${schemaCtx}`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ parts: [{ text: userMsg }] }],
+          contents: [{ role: 'user', parts: [{ text: userMsg }] }],
           generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
         }),
       }
     );
     const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error?.message || `HTTP ${resp.status}`);
+    if (!resp.ok) {
+      const msg = data.error?.message || JSON.stringify(data).slice(0, 200);
+      throw new Error(`HTTP ${resp.status}: ${msg}`);
+    }
 
     let sql = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
     // 마크다운 코드펜스 제거 (Gemini가 간혹 붙임)
