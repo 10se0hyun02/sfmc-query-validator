@@ -56,14 +56,15 @@
         <div id="ai-panel-body">
           <div id="ai-key-form" style="display:none;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);">
             <div style="display:flex;gap:6px;align-items:center;">
-              <input class="mock-input" id="ai-api-key" type="password" placeholder="gsk_... / AIzaSy... / sk-or-..." style="flex:1;font-size:12px;" />
+              <input class="mock-input" id="ai-api-key" type="password" placeholder="gsk_... / sk-or-... / AIzaSy..." style="flex:1;font-size:12px;" />
               <button class="btn btn-primary" style="white-space:nowrap;font-size:12px;" onclick="saveAiKey()">저장</button>
             </div>
-            <p style="font-size:11px;color:var(--text-muted);margin-top:5px;">
+            <div id="ai-key-status" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;"></div>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">
               <strong style="color:var(--accent);">Groq (무료)</strong> console.groq.com → API Keys<br>
               <strong style="color:var(--accent);">OpenRouter (권장·무료티어)</strong> openrouter.ai → Keys<br>
-              <span style="color:var(--text-muted);">Gemini: aistudio.google.com → Get API key</span><br>
-              키 앞글자로 자동 감지: gsk_ = Groq, sk-or- = OpenRouter, AIzaSy = Gemini. localStorage에만 저장됩니다.
+              <span>Gemini: aistudio.google.com → Get API key</span><br>
+              여러 키를 저장하면 Groq 한도 초과 시 <strong style="color:var(--success);">자동 전환</strong>됩니다.
             </p>
           </div>
           <div class="ai-fields">
@@ -2142,8 +2143,7 @@ async function verifyConditions() {
   if (!sql) { alert('에디터에 쿼리를 먼저 입력하세요.'); return; }
   if (!include && !exclude) { alert('AI 패널에 타겟 조건을 먼저 입력하세요.'); return; }
 
-  const apiKey = localStorage.getItem(AI_KEY_LS) || document.getElementById('ai-api-key').value.trim();
-  if (!apiKey) { alert('AI API 키를 먼저 설정하세요 (🔑 API 키 버튼).'); return; }
+  if (!_getAiKeyList().length) { alert('AI API 키를 먼저 설정하세요 (🔑 API 키 버튼).'); return; }
 
   // 검사 결과 탭으로 전환 후 로딩 표시
   openSubTab('tsql', 'tsql-result');
@@ -2221,85 +2221,12 @@ Respond in Korean.`;
   const userMsg = `=== 타겟 조건 ===\n${conditionText}\n\n=== SQL 쿼리 (줄번호 포함) ===\n${numberedSql}${sampleSection}`;
 
   try {
-    let text = '';
-    const isGroq       = apiKey.startsWith('gsk_');
-    const isGemini     = apiKey.startsWith('AIza');
-    const isOpenRouter = apiKey.startsWith('sk-or-');
-
-    if (isGroq) {
-      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }],
-          temperature: 0.1, max_tokens: 2000,
-          response_format: { type: 'json_object' },
-        }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        if (resp.status === 429) {
-          const retryMatch = (data.error?.message || '').match(/try again in ([\d]+m[\d.]+s|[\d.]+s)/i);
-          const retryMsg = retryMatch ? `${retryMatch[1]} 후 다시 시도하세요.` : '잠시 후 다시 시도하세요.';
-          throw new Error(`Groq 일일 토큰 한도 초과. ${retryMsg}\n💡 내일이 되면 자동 초기화됩니다.`);
-        }
-        throw new Error(data.error?.message || `HTTP ${resp.status}`);
-      }
-      text = data.choices?.[0]?.message?.content?.trim() || '{}';
-
-    } else if (isOpenRouter) {
-      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': location.href,
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-3.3-70b-instruct',
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }],
-          temperature: 0.1,
-          max_tokens: 2000,
-          response_format: { type: 'json_object' },
-        }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        if (resp.status === 429) throw new Error('OpenRouter 요청 한도 초과. 잠시 후 다시 시도하세요.');
-        throw new Error(data.error?.message || `HTTP ${resp.status}`);
-      }
-      text = data.choices?.[0]?.message?.content?.trim() || '{}';
-
-    } else if (isGemini) {
-      const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-      const listData = await listResp.json();
-      const available = (listData.models || []).map(m => m.name.replace('models/', ''));
-      const preferred = ['gemini-2.0-flash','gemini-2.0-flash-exp','gemini-1.5-flash'];
-      let modelUrl = null;
-      for (const p of preferred) {
-        if (available.some(a => a.startsWith(p))) { modelUrl = `https://generativelanguage.googleapis.com/v1beta/models/${p}:generateContent`; break; }
-      }
-      if (!modelUrl) throw new Error('사용 가능한 Gemini 모델이 없습니다.');
-      const resp = await fetch(`${modelUrl}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: userMsg }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 3000 },
-        }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error?.message || `HTTP ${resp.status}`);
-      text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';
-      text = text.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/,'').trim();
-
-    } else {
-      throw new Error('API 키 형식을 알 수 없습니다. Groq(gsk_...), OpenRouter(sk-or-...) 또는 Gemini(AIzaSy...) 키를 입력하세요.');
-    }
-
-    const result = JSON.parse(text);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user',   content: userMsg },
+    ];
+    const text = await _callAIWithFallback(messages, { maxTokens: 2000, jsonMode: true, systemPromptForGemini: systemPrompt });
+    const result = JSON.parse(text || '{}');
     _renderVerifyResult(result);
 
   } catch(err) {
@@ -2459,13 +2386,66 @@ function _renderVerifyResult(result) {
 }
 
 // ── AI Query Generator ────────────────────────────────────────────
-const AI_KEY_LS  = 'sfmc_ai_apikey';
-const AI_OPEN_LS = 'sfmc_ai_panel_open';
+const AI_OPEN_LS    = 'sfmc_ai_panel_open';
+const AI_KEY_GROQ   = 'sfmc_ai_key_groq';
+const AI_KEY_OR     = 'sfmc_ai_key_or';
+const AI_KEY_GEMINI = 'sfmc_ai_key_gemini';
+const AI_KEY_LS     = 'sfmc_ai_apikey'; // legacy — migrate on load
+
+function _aiKeyProvider(k) {
+  if (!k) return null;
+  if (k.startsWith('gsk_'))   return 'groq';
+  if (k.startsWith('sk-or-')) return 'or';
+  if (k.startsWith('AIza'))   return 'gemini';
+  return null;
+}
+function _aiStorageKey(provider) {
+  return { groq: AI_KEY_GROQ, or: AI_KEY_OR, gemini: AI_KEY_GEMINI }[provider];
+}
+function _getAiKey(provider) {
+  return localStorage.getItem(_aiStorageKey(provider)) || null;
+}
+// 우선순위 순서로 사용 가능한 키 목록 반환
+function _getAiKeyList() {
+  return ['groq','or','gemini'].map(p => _getAiKey(p)).filter(Boolean);
+}
+
+function _renderKeyStatus() {
+  const el = document.getElementById('ai-key-status');
+  if (!el) return;
+  const providers = [
+    { id: 'groq',   label: 'Groq',        color: 'var(--info)' },
+    { id: 'or',     label: 'OpenRouter',   color: 'var(--success)' },
+    { id: 'gemini', label: 'Gemini',       color: 'var(--warning)' },
+  ];
+  el.innerHTML = providers.map(p => {
+    const has = !!_getAiKey(p.id);
+    return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;
+      padding:2px 8px;border-radius:10px;border:1px solid ${has ? p.color : 'var(--border)'};
+      color:${has ? p.color : 'var(--text-muted)'};cursor:${has ? 'pointer' : 'default'};"
+      onclick="${has ? `_removeAiKey('${p.id}')` : ''}" title="${has ? '클릭하여 삭제' : '미설정'}">
+      ${has ? '✓' : '○'} ${p.label}${has ? ' ×' : ''}
+    </span>`;
+  }).join('');
+}
+
+function _removeAiKey(provider) {
+  if (!confirm(`${provider} 키를 삭제하시겠습니까?`)) return;
+  localStorage.removeItem(_aiStorageKey(provider));
+  _renderKeyStatus();
+  _showAiMsg(`${provider} 키가 삭제되었습니다.`, 'info');
+}
 
 (function initAiPanel() {
   if (localStorage.getItem(AI_OPEN_LS) === 'false') _setAiPanel(false);
-  const key = localStorage.getItem(AI_KEY_LS);
-  if (key) document.getElementById('ai-api-key').value = key;
+  // 레거시 단일 키 마이그레이션
+  const legacy = localStorage.getItem(AI_KEY_LS);
+  if (legacy) {
+    const p = _aiKeyProvider(legacy);
+    if (p && !_getAiKey(p)) localStorage.setItem(_aiStorageKey(p), legacy);
+    localStorage.removeItem(AI_KEY_LS);
+  }
+  _renderKeyStatus();
 })();
 
 function _setAiPanel(open) {
@@ -2487,9 +2467,13 @@ function toggleAiKeyForm() {
 function saveAiKey() {
   const key = document.getElementById('ai-api-key').value.trim();
   if (!key) return;
-  localStorage.setItem(AI_KEY_LS, key);
-  document.getElementById('ai-key-form').style.display = 'none';
-  _showAiMsg('API 키가 저장되었습니다.', 'success');
+  const provider = _aiKeyProvider(key);
+  if (!provider) { _showAiMsg('키 형식 불인식. gsk_ / sk-or- / AIzaSy 로 시작해야 합니다.', 'error'); return; }
+  localStorage.setItem(_aiStorageKey(provider), key);
+  document.getElementById('ai-api-key').value = '';
+  _renderKeyStatus();
+  const names = { groq: 'Groq', or: 'OpenRouter', gemini: 'Gemini' };
+  _showAiMsg(`${names[provider]} 키가 저장되었습니다.`, 'success');
 }
 
 function _showAiMsg(text, type) {
@@ -2498,6 +2482,80 @@ function _showAiMsg(text, type) {
   el.style.display = 'block';
   el.innerHTML = `<span style="font-size:12px;color:${color};">${text}</span>`;
   if (type !== 'error') setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+// OpenAI-compatible endpoint 호출 (Groq / OpenRouter 공용)
+async function _callOpenAICompat(apiKey, url, model, messages, maxTokens, jsonMode) {
+  const body = {
+    model, messages, temperature: 0.1, max_tokens: maxTokens,
+    ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+  };
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+  if (url.includes('openrouter')) headers['HTTP-Referer'] = location.href;
+  const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const err = Object.assign(new Error(data.error?.message || `HTTP ${resp.status}`), { status: resp.status });
+    throw err;
+  }
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
+// 폴백 포함 AI 호출 — Groq 429 발생 시 OR → Gemini 순으로 자동 전환
+async function _callAIWithFallback(messages, { maxTokens = 1024, jsonMode = false, systemPromptForGemini = null } = {}) {
+  const keys = _getAiKeyList();
+  if (!keys.length) throw new Error('저장된 API 키가 없습니다. 🔑 API 키 버튼으로 키를 등록하세요.');
+
+  let lastErr;
+  for (const apiKey of keys) {
+    const provider = _aiKeyProvider(apiKey);
+    try {
+      if (provider === 'groq') {
+        const model = jsonMode ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
+        return await _callOpenAICompat(apiKey, 'https://api.groq.com/openai/v1/chat/completions', model, messages, maxTokens, jsonMode);
+      }
+      if (provider === 'or') {
+        return await _callOpenAICompat(apiKey, 'https://openrouter.ai/api/v1/chat/completions', 'meta-llama/llama-3.3-70b-instruct', messages, maxTokens, jsonMode);
+      }
+      if (provider === 'gemini') {
+        // Gemini는 별도 포맷
+        const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const listData = await listResp.json();
+        const available = (listData.models || []).map(m => m.name.replace('models/', ''));
+        const preferred = ['gemini-2.0-flash','gemini-2.0-flash-exp','gemini-1.5-flash'];
+        let modelUrl = null;
+        for (const p of preferred) {
+          if (available.some(a => a.startsWith(p))) { modelUrl = `https://generativelanguage.googleapis.com/v1beta/models/${p}:generateContent`; break; }
+        }
+        if (!modelUrl) throw new Error('사용 가능한 Gemini 모델 없음');
+        const sysMsg = systemPromptForGemini || messages.find(m => m.role === 'system')?.content || '';
+        const userMsg = messages.filter(m => m.role === 'user').map(m => m.content).join('\n');
+        const resp = await fetch(`${modelUrl}?key=${apiKey}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: sysMsg }] },
+            contents: [{ role: 'user', parts: [{ text: userMsg }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: maxTokens },
+          }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw Object.assign(new Error(data.error?.message || `HTTP ${resp.status}`), { status: resp.status });
+        let text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+        return text.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/,'').trim();
+      }
+    } catch (err) {
+      lastErr = err;
+      if (err.status === 429) {
+        const providerName = { groq: 'Groq', or: 'OpenRouter', gemini: 'Gemini' }[provider];
+        console.warn(`[AI] ${providerName} 429 → 다음 키로 폴백`);
+        _showAiMsg(`${providerName} 한도 초과 → 다음 키로 자동 전환 중...`, 'info');
+        continue; // 다음 키 시도
+      }
+      throw err; // 429 외 오류는 즉시 throw
+    }
+  }
+  // 모든 키가 429
+  throw new Error('모든 API 키의 한도가 초과되었습니다. 내일 다시 시도하거나 키를 추가하세요.\n' + (lastErr?.message || ''));
 }
 
 function _buildSchemaContext() {
@@ -2516,14 +2574,13 @@ function _buildSchemaContext() {
 }
 
 async function generateQuery() {
-  const apiKey  = localStorage.getItem(AI_KEY_LS) || document.getElementById('ai-api-key').value.trim();
   const include = document.getElementById('ai-prompt-include').value.trim();
   const exclude  = document.getElementById('ai-prompt-exclude').value.trim();
 
-  if (!apiKey) {
+  if (!_getAiKeyList().length) {
     document.getElementById('ai-key-form').style.display = '';
     document.getElementById('ai-api-key').focus();
-    _showAiMsg('Google AI Studio API 키를 먼저 입력해주세요.', 'error');
+    _showAiMsg('API 키를 먼저 등록하세요 (🔑 API 키 버튼).', 'error');
     return;
   }
   if (!include && !exclude) {
@@ -2692,114 +2749,14 @@ ${schemaCtx}`;
   ].filter(Boolean).join('\n\n');
 
   try {
-    const reqBody = {
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: 'user', parts: [{ text: userMsg }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-    };
-    let resp, data, sql;
-    const isGroq       = apiKey.startsWith('gsk_');
-    const isGemini     = apiKey.startsWith('AIza');
-    const isOpenRouter = apiKey.startsWith('sk-or-');
-
-    if (isGroq) {
-      // ── Groq ───────────────────────────────────────────────────
-      resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user',   content: userMsg },
-          ],
-          temperature: 0.1,
-          max_tokens: 1024,
-        }),
-      });
-      try { data = await resp.json(); } catch { data = {}; }
-      console.log('[Groq]', resp.status, JSON.stringify(data).slice(0, 300));
-      if (!resp.ok) {
-        if (resp.status === 429) {
-          const retryMatch = (data.error?.message || '').match(/try again in ([\d]+m[\d.]+s|[\d.]+s)/i);
-          const retryMsg = retryMatch ? `${retryMatch[1]} 후 다시 시도하세요.` : '잠시 후 다시 시도하세요.';
-          throw new Error(`Groq 일일 토큰 한도 초과. ${retryMsg}\n💡 내일이 되면 자동 초기화됩니다.`);
-        }
-        throw new Error(`HTTP ${resp.status}: ${data.error?.message || JSON.stringify(data).slice(0, 200)}`);
-      }
-      sql = data.choices?.[0]?.message?.content?.trim() || '';
-
-    } else if (isOpenRouter) {
-      // ── OpenRouter ─────────────────────────────────────────────
-      resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': location.href,
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-3.3-70b-instruct',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user',   content: userMsg },
-          ],
-          temperature: 0.1,
-          max_tokens: 1024,
-        }),
-      });
-      try { data = await resp.json(); } catch { data = {}; }
-      console.log('[OpenRouter]', resp.status, JSON.stringify(data).slice(0, 300));
-      if (!resp.ok) {
-        if (resp.status === 429) throw new Error('OpenRouter 요청 한도 초과. 잠시 후 다시 시도하세요.');
-        throw new Error(`HTTP ${resp.status}: ${data.error?.message || JSON.stringify(data).slice(0, 200)}`);
-      }
-      sql = data.choices?.[0]?.message?.content?.trim() || '';
-
-    } else if (isGemini) {
-      // ── Gemini (사용 가능한 모델 자동 감지) ──────────────────
-      const PREFERRED = ['gemini-2.0-flash','gemini-2.0-flash-exp','gemini-1.5-flash'];
-      let modelUrl = null;
-      const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-      const listData = await listResp.json();
-      console.log('[Gemini] 사용 가능한 모델:', listData.models?.map(m => m.name));
-      const available = (listData.models || []).map(m => m.name.replace('models/', ''));
-      for (const p of PREFERRED) {
-        if (available.some(a => a.startsWith(p))) {
-          modelUrl = `https://generativelanguage.googleapis.com/v1beta/models/${p}:generateContent`;
-          break;
-        }
-      }
-      if (!modelUrl) {
-        const any = listData.models?.find(m => (m.supportedGenerationMethods || []).includes('generateContent'));
-        if (any) modelUrl = `https://generativelanguage.googleapis.com/v1beta/${any.name}:generateContent`;
-      }
-      if (!modelUrl) throw new Error('사용 가능한 Gemini 모델을 찾을 수 없습니다. API 키를 확인하세요.');
-      console.log('[Gemini] 사용 모델:', modelUrl);
-      resp = await fetch(`${modelUrl}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reqBody),
-      });
-      try { data = await resp.json(); } catch { data = {}; }
-      if (!resp.ok) {
-        if (resp.status === 429) throw new Error('Gemini 무료 할당량이 없습니다. 🔑 API 키를 OpenRouter(sk-or-...) 또는 Groq(gsk_...) 키로 교체하세요.');
-        throw new Error(`HTTP ${resp.status}: ${data.error?.message || JSON.stringify(data).slice(0, 200)}`);
-      }
-      sql = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-
-    } else {
-      throw new Error('API 키 형식을 알 수 없습니다. Groq(gsk_...), OpenRouter(sk-or-...) 또는 Gemini(AIzaSy...) 키를 입력하세요.');
-    }
-
-    // 마크다운 코드펜스 제거
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user',   content: userMsg },
+    ];
+    let sql = await _callAIWithFallback(messages, { maxTokens: 1024, systemPromptForGemini: systemPrompt });
     sql = sql.replace(/^```sql\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim();
     if (!sql) throw new Error('생성된 쿼리가 없습니다.');
-
-    if (tsqlEditor) {
-      tsqlEditor.setValue(sql);
-      tsqlEditor.focus();
-    }
+    if (tsqlEditor) { tsqlEditor.setValue(sql); tsqlEditor.focus(); }
     _showAiMsg('✅ 쿼리가 에디터에 삽입되었습니다. 반드시 검증 후 사용하세요.', 'success');
   } catch (err) {
     _showAiMsg(`오류: ${err.message}`, 'error');
