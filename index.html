@@ -65,6 +65,7 @@
       <div class="result-header">
         <div class="result-subtabs">
           <button class="tab-btn active" data-mode="tsql" data-tab="tsql-result">✅ 검사 결과</button>
+          <button class="tab-btn" data-mode="tsql" data-tab="tsql-schema">📋 DE 스키마</button>
           <button class="tab-btn" data-mode="tsql" data-tab="tsql-connect">🔗 DE 연결</button>
         </div>
       </div>
@@ -73,6 +74,19 @@
           <div class="empty-state">
             <div class="icon">📝</div>
             <div>SQL을 입력하고 <strong>검증하기</strong>를 클릭하세요</div>
+          </div>
+        </div>
+        <div id="tsql-schema" style="display:none">
+          <div class="connect-form">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.6;">
+              사전 로드된 DE 스키마를 검색하세요. SFMC 연결 없이도 컬럼 구조를 확인할 수 있습니다.
+            </p>
+            <div class="field" style="position:relative;">
+              <label>DE명 검색</label>
+              <input class="mock-input" id="schema-de-search" placeholder="DE 이름 입력 (예: RC_User)" autocomplete="off" />
+              <div id="schema-de-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+            </div>
+            <div id="schema-de-result" style="margin-top:12px;"></div>
           </div>
         </div>
         <div id="tsql-connect" style="display:none">
@@ -288,6 +302,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<script src="data-schema.js"></script>
 <script src="validator.js"></script>
 <script>
 // ── Theme ────────────────────────────────────────────────────────
@@ -627,6 +642,32 @@ require(['vs/editor/editor.main'], function () {
         fn('LIMIT',    'LIMIT ${1:100}',                         'MySQL 결과 수 제한'),
         fn('INTO',     'INTO [${1:Result_DE}]',                  'T-SQL 결과 DE 지정'),
       ];
+
+      // DATA_SCHEMA DE 테이블명 + 컬럼 자동완성
+      if (typeof DATA_SCHEMA !== 'undefined') {
+        for (const [deName, de] of Object.entries(DATA_SCHEMA)) {
+          suggestions.push({
+            label: deName,
+            insertText: `[${deName}]`,
+            detail: `DE · ${de.columns.length}개 컬럼`,
+            range,
+            kind: monaco.languages.CompletionItemKind.Class,
+            sortText: '0' + deName,
+          });
+          for (const col of de.columns) {
+            const meta = [col.type, col.maxLength ? `(${col.maxLength})` : '', col.isPrimaryKey ? 'PK' : '', col.isRequired ? '필수' : ''].filter(Boolean).join(' ');
+            suggestions.push({
+              label: col.name,
+              insertText: col.name,
+              detail: `${deName} · ${meta}`,
+              range,
+              kind: monaco.languages.CompletionItemKind.Field,
+              sortText: '1' + col.name,
+            });
+          }
+        }
+      }
+
       return { suggestions };
     }
   });
@@ -657,12 +698,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 function openSubTab(mode, tabId) {
   document.querySelectorAll(`#mode-${mode} .tab-btn`).forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
-  [`${mode}-result`, `${mode}-connect`].forEach(id => {
-    document.getElementById(id).style.display = id === tabId ? 'block' : 'none';
+  const panels = mode === 'tsql'
+    ? [`${mode}-result`, `${mode}-schema`, `${mode}-connect`]
+    : [`${mode}-result`, `${mode}-connect`];
+  panels.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === tabId ? 'block' : 'none';
   });
-  if (tabId === `${mode}-connect`) {
-    prefillConnectForm(mode);
-  }
+  if (tabId === `${mode}-connect`) prefillConnectForm(mode);
 }
 
 // ── SFMC Connection ──────────────────────────────────────────────
@@ -1027,6 +1070,81 @@ function onDESearchInput(mode, val) {
     });
   });
   suggestEl.style.display = 'block';
+}
+
+// ── DE Schema Browser ─────────────────────────────────────────────
+document.getElementById('schema-de-search').addEventListener('input', e => onSchemaSearchInput(e.target.value));
+document.addEventListener('click', e => {
+  if (!e.target.closest('#tsql-schema .field')) {
+    document.getElementById('schema-de-suggestions').style.display = 'none';
+  }
+});
+
+function onSchemaSearchInput(val) {
+  const suggestEl = document.getElementById('schema-de-suggestions');
+  val = val.trim();
+  if (!val) { suggestEl.style.display = 'none'; return; }
+
+  if (typeof DATA_SCHEMA === 'undefined' || Object.keys(DATA_SCHEMA).length === 0) {
+    suggestEl.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--text-muted);">스키마 데이터가 없습니다.</div>`;
+    suggestEl.style.display = 'block';
+    return;
+  }
+
+  const q = val.toLowerCase();
+  const matches = Object.keys(DATA_SCHEMA).filter(n => n.toLowerCase().includes(q)).slice(0, 15);
+
+  if (!matches.length) {
+    suggestEl.innerHTML = `<div style="padding:8px 12px;font-size:12px;color:var(--text-muted);">검색 결과 없음</div>`;
+    suggestEl.style.display = 'block';
+    return;
+  }
+
+  suggestEl.innerHTML = matches.map(name => {
+    const de = DATA_SCHEMA[name];
+    return `<div class="de-suggest-item" data-name="${name}"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px;"
+      onmouseover="this.style.background='rgba(137,180,250,0.08)'" onmouseout="this.style.background=''">
+      <div style="font-weight:600;color:var(--text);">${name}</div>
+      <div style="color:var(--text-muted);font-size:11px;font-family:monospace;">${de.columns.length}개 컬럼 · ${de.customerKey}</div>
+    </div>`;
+  }).join('');
+
+  suggestEl.querySelectorAll('.de-suggest-item').forEach(el => {
+    el.addEventListener('click', () => {
+      document.getElementById('schema-de-search').value = el.dataset.name;
+      suggestEl.style.display = 'none';
+      showSchemaDetail(el.dataset.name);
+    });
+  });
+  suggestEl.style.display = 'block';
+}
+
+function showSchemaDetail(deName) {
+  const resultEl = document.getElementById('schema-de-result');
+  const de = DATA_SCHEMA && DATA_SCHEMA[deName];
+  if (!de) return;
+  resultEl.innerHTML = `
+    <div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">
+      <strong style="color:var(--text)">${deName}</strong>
+      &nbsp;·&nbsp; <strong style="color:var(--text)">${de.columns.length}</strong>개 컬럼
+      &nbsp;·&nbsp; <code style="font-size:11px;color:var(--accent)">${de.customerKey}</code>
+    </div>
+    <div class="result-table-wrap" style="max-height:300px;overflow:auto;">
+      <table>
+        <thead><tr><th>#</th><th>컬럼명</th><th>타입</th><th>길이</th><th>PK</th><th>필수</th></tr></thead>
+        <tbody>${de.columns.map((c, i) => `
+          <tr>
+            <td style="color:var(--text-muted)">${i + 1}</td>
+            <td style="${c.isPrimaryKey ? 'color:var(--accent);font-weight:600' : ''}">${c.name}</td>
+            <td>${c.type}</td>
+            <td style="text-align:right">${c.maxLength || ''}</td>
+            <td style="text-align:center">${c.isPrimaryKey ? '✓' : ''}</td>
+            <td style="text-align:center">${c.isRequired ? '✓' : ''}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 // ── Snippets ─────────────────────────────────────────────────────
