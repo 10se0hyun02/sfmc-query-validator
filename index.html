@@ -2541,99 +2541,147 @@ async function generateQuery() {
 
 === THIS IS T-SQL, NOT SOQL ===
 Data Extensions are plain SQL tables. Use standard T-SQL SELECT/FROM/JOIN syntax ONLY.
-NEVER use SOQL syntax: no LIMIT, OFFSET, TYPEOF, WITH SECURITY_ENFORCED, no dot-relationship traversal (e.g. Account.Name is forbidden).
-NEVER treat DEs as Salesforce objects. They are flat SQL tables joined with explicit JOIN … ON clauses.
+NEVER use SOQL syntax (no LIMIT, OFFSET, dot-relationship traversal like Account.Name, etc.).
+NEVER treat DEs as Salesforce objects.
 
 === SCHEMA RULES ===
-- Use ONLY DE names and column names from the schema below. Never invent or guess names.
+- Use ONLY column names from the schema below. Never invent names.
 - Enclose every DE name in square brackets: [RC_Order].
-- Missing column → add -- ⚠ 컬럼 없음 comment, skip that condition.
+- Missing column → add -- ⚠ 컬럼 없음 comment and skip that condition.
 
-=== MANDATORY RULES (apply to every query, no exceptions) ===
+=== MANDATORY RULES — NO EXCEPTIONS ===
 
-1. STRUCTURE: Always use the 4-layer T0→T1→BASE→FIN subquery hierarchy below.
+1. DEDUPLICATION (required in every query)
+   ROW_NUMBER() OVER(PARTITION BY T0.Phone
+                         ORDER BY IsMobileVerified__c DESC
+                                 ,T0.CreatedDatetime__c DESC) AS ROW_NUM
+   Outer WHERE must be: WHERE ROW_NUM = 1
+   PARTITION BY: use Phone (MobilePhone column), never ContactKey or MemberNo__c.
+   ORDER BY: IsMobileVerified__c DESC first, CreatedDatetime__c DESC second.
 
-2. DEDUPLICATION: FIN layer must always include ROW_NUMBER() OVER(PARTITION BY MobilePhone ORDER BY IsMobileVerified__c DESC, MemberJoinDate__c DESC) AS ROW_NUM. Final WHERE must be ROW_NUM = 1.
+2. DATE — STORED COLUMN CONVERSION (critical)
+   SFMC stores DE dates in UTC-6 (US Central Time), NOT UTC.
+   To convert any stored date column to KST: DATEADD(hour, 15, date_column)
+   Examples:
+     CAST(DATEADD(hour, 15, MemberJoinDate__c) AS DATE)
+     CAST(DATEADD(hour, 15, EndDate) AS DATE)
+   For current KST time: DATEADD(hour, 9, GETUTCDATE())
+   NEVER use GETDATE(). NEVER add only 9 hours to stored date columns.
 
-3. ORDER/PURCHASE FILTERING: Never use NOT EXISTS or correlated subqueries to filter by order dates. Always aggregate order history in T1 using MAX(CASE WHEN … END) into named flag columns (e.g. Lapsed_YN, Recent_Order_YN). Apply the flags in BASE WHERE clause.
+3. DATE BOUNDARIES
+   Year-range base = yesterday KST (not today):
+   DATEFROMPARTS(YEAR(DATEADD(DAY,-1, CAST(DATEADD(hour,9,GETUTCDATE()) AS DATE))) - N, 1, 1)
+   Example — members who joined 5~2 years ago:
+     >= DATEFROMPARTS(YEAR(DATEADD(DAY,-1,CAST(DATEADD(hour,9,GETUTCDATE()) AS DATE))) - 5, 1, 1)
+     <  DATEFROMPARTS(YEAR(DATEADD(DAY,-1,CAST(DATEADD(hour,9,GETUTCDATE()) AS DATE))) - 2, 1, 1)
 
-4. TIME BASE: Never use GETDATE(). Always use DATEADD(HOUR, 9, GETUTCDATE()) for KST current time.
+4. BOOLEAN VALUES
+   Always string: IsWithdrawn__c = 'False', IsSMSAgreed__c = 'True', IsDeleted__c = 'False'
+   NEVER use bare true / false.
 
-5. DATE BOUNDARIES: For year-unit date ranges, always use DATEFROMPARTS(YEAR(DATEADD(HOUR,9,GETUTCDATE()))-N, 1, 1). Never use DATEADD(YEAR,-N,GETDATE()).
+5. JOIN KEYS
+   Contact → Account: C.StoreMana__c = A.Id
+   Contact → Order:   T0.Id = T1.MemberNo__c   (Contact Id, NOT MemberNo__c)
+   NEVER join Order via AccountId or ContactKey.
 
-6. JOIN KEY: T0 and T1 are always joined on MemberNo__c (T0.MemberNo__c = T1.ContactKey). Never join orders via AccountId or ContactKey.
+6. ORDER FILTERING — choose the right pattern:
+   a) EXCLUSION (고객이 주문 없음 조건): LEFT JOIN + WHERE IS NULL
+      LEFT
+      JOIN  [RC_Order] AS T1
+        ON  T0.Id = T1.MemberNo__c
+       AND  IsDeleted__c = 'False'
+       AND  (EndDate IS NULL OR CAST(DATEADD(hour,15,EndDate) AS DATE) < CAST(DATEADD(hour,9,GETUTCDATE()) AS DATE))
+      WHERE  T1.MemberNo__c IS NULL
 
-=== EXACT FORMATTING (follow precisely) ===
-Right-align SQL keywords to 6 chars, then 2 spaces before content.
+   b) DATE FLAG (최근 N일 구매 여부 등 집계): subquery T1 with MAX(CASE WHEN) + GROUP BY
+      SELECT  MemberNo__c AS ContactKey
+              ,MAX(CASE WHEN ... THEN 'Y' ELSE 'N' END) AS Flag_YN
+        FROM  [RC_Order]
+       WHERE  IsDeleted__c = 'False'
+       GROUP BY MemberNo__c
+      Then LEFT JOIN T1 ON T0.Id = T1.ContactKey, apply flag in WHERE.
 
-=== QUERY STRUCTURE — ALWAYS use this 4-layer pattern, no exceptions ===
+   NEVER use NOT EXISTS, NOT IN, or correlated subqueries.
 
-SELECT  FIN.*
-  FROM  (
-        SELECT  BASE.*
-                ,ROW_NUMBER() OVER(PARTITION BY BASE.MobilePhone
-                                       ORDER BY BASE.IsMobileVerified__c DESC
-                                               ,BASE.MemberJoinDate__c   DESC) AS ROW_NUM
-          FROM  (
-                SELECT  T0.Col1
-                        ,T0.Col2
-                        ,T1.Last_Purchase_Date
-                        ,T1.Last_Order_Date
-                        ,MAX(CASE
-                                WHEN T1.Last_Purchase_Date >= DATEFROMPARTS(YEAR(DATEADD(HOUR, 9, GETUTCDATE())) - 5, 1, 1)
-                                 AND T1.Last_Purchase_Date <  DATEFROMPARTS(YEAR(DATEADD(HOUR, 9, GETUTCDATE())) - 3, 1, 1)
-                                THEN 'Y' ELSE 'N'
-                             END) AS Lapsed_YN
-                        ,MAX(CASE
-                                WHEN DATEDIFF(DAY, T1.Last_Order_Date, CAST(DATEADD(HOUR, 9, GETUTCDATE()) AS DATE)) <= 90
-                                THEN 'Y' ELSE 'N'
-                             END) AS Recent_Order_YN
-                  FROM  (
-                        -- T0: 대상 고객 기본 조건
-                        SELECT  C.Col1
-                                ,C.Col2
-                          FROM  [Contact_DE] AS C
-                          JOIN  [Account_DE] AS A
-                            ON  C.AccountId = A.Id
-                         WHERE  A.StoreType__c IN ('코드1', '코드2')
-                           AND  C.IsAgreed__c = 'True'
-                        ) AS T0
-                  LEFT
-                  JOIN  (
-                        -- T1: 주문/구매 이력 집계
-                        SELECT  MemberNo__c AS ContactKey
-                                ,MAX(CASE WHEN SaleNO__c IS NOT NULL THEN CAST(DATEADD(HOUR, 15, EndDate) AS DATE) END) AS Last_Purchase_Date
-                                ,MAX(CASE WHEN OrderNo__c IS NOT NULL AND Status = 'orderSuccess' THEN CAST(DATEADD(HOUR, 15, PoDate) AS DATE) END) AS Last_Order_Date
-                          FROM  [Order_DE]
-                         WHERE  IsDeleted__c = 'False'
-                         GROUP
-                            BY  MemberNo__c
-                        ) AS T1
-                    ON  T0.MemberNo__c = T1.ContactKey
-                 GROUP
-                    BY  T0.Col1, T0.Col2, T1.Last_Purchase_Date, T1.Last_Order_Date
-                ) AS BASE
-         WHERE  Lapsed_YN = 'Y'
-           AND  Recent_Order_YN = 'N'
-        ) AS FIN
- WHERE  ROW_NUM = 1
+7. QUERY STRUCTURE — choose based on need:
 
-Layer roles (ALWAYS use all 4 layers, no exceptions):
-- T0 subquery: contact base filter (DE JOIN, basic WHERE conditions)
-- T1 subquery: order/purchase history aggregated by member key (GROUP BY). If no order data needed, use a stub: SELECT NULL AS ContactKey, NULL AS Last_Purchase_Date, NULL AS Last_Order_Date WHERE 1=0
-- BASE: T0 LEFT JOIN T1, compute flag columns with MAX(CASE WHEN ... END), GROUP BY all non-agg columns
-- FIN: filter BASE by flags, add ROW_NUMBER() OVER(PARTITION BY MobilePhone) for deduplication, WHERE ROW_NUM = 1
+   Pattern A — Order exclusion only (3-layer):
+   SELECT  FIN.*
+     FROM  (
+           SELECT  T0.MemberNo__c AS ContactKey
+                   ,T0.Phone
+                   ,T0.LastName
+                   -- ...필요한 컬럼
+                   ,ROW_NUMBER() OVER(PARTITION BY T0.Phone
+                                          ORDER BY IsMobileVerified__c DESC
+                                                  ,T0.CreatedDatetime__c DESC) AS ROW_NUM
+             FROM  (
+                   -- T0: 기본 조건 필터
+                   SELECT  C.Id
+                           ,C.MemberNo__c
+                           ,C.LastName
+                           ,C.MobilePhone AS Phone
+                           ,C.IsMobileVerified__c
+                           ,C.CreatedDatetime__c
+                           -- ...
+                     FROM  [RC_Contact] AS C
+                     JOIN  [RC_Account] AS A
+                       ON  C.StoreMana__c = A.Id
+                    WHERE  C.IsSMSAgreed__c = 'True'
+                      AND  C.IsWithdrawn__c = 'False'
+                      AND  A.StoreType__c IN ('08','09','11','12')
+                   ) AS T0
+             LEFT
+             JOIN  [RC_Order] AS T1
+               ON  T0.Id = T1.MemberNo__c
+              AND  IsDeleted__c = 'False'
+              AND  (EndDate IS NULL OR CAST(DATEADD(hour,15,EndDate) AS DATE) < CAST(DATEADD(hour,9,GETUTCDATE()) AS DATE))
+            WHERE  T1.MemberNo__c IS NULL
+           ) AS FIN
+    WHERE  ROW_NUM = 1
+
+   Pattern B — Order date flag needed (4-layer, add BASE with GROUP BY):
+   SELECT  FIN.*
+     FROM  (
+           SELECT  BASE.*
+                   ,ROW_NUMBER() OVER(PARTITION BY BASE.Phone
+                                          ORDER BY IsMobileVerified__c DESC
+                                                  ,BASE.CreatedDatetime__c DESC) AS ROW_NUM
+             FROM  (
+                   SELECT  T0.MemberNo__c AS ContactKey
+                           ,T0.Phone
+                           -- ...
+                           ,MAX(CASE WHEN [주문 조건] THEN 'Y' ELSE 'N' END) AS Flag_YN
+                     FROM  (-- T0 subquery same as Pattern A) AS T0
+                     LEFT
+                     JOIN  (
+                           SELECT  MemberNo__c AS ContactKey
+                                   ,MAX(CASE WHEN ... THEN CAST(DATEADD(hour,15,EndDate) AS DATE) END) AS LastDate
+                             FROM  [RC_Order]
+                            WHERE  IsDeleted__c = 'False'
+                            GROUP BY MemberNo__c
+                           ) AS T1
+                       ON  T0.Id = T1.ContactKey
+                    GROUP BY T0.MemberNo__c, T0.Phone, ...all non-agg cols
+                   ) AS BASE
+            WHERE  Flag_YN = 'Y'
+           ) AS FIN
+    WHERE  ROW_NUM = 1
 
 === T-SQL FUNCTIONS ===
-- KST now: DATEADD(HOUR, 9, GETUTCDATE())
-- Year boundary: DATEFROMPARTS(YEAR(DATEADD(HOUR,9,GETUTCDATE()))-N, 1, 1)
-- Date diff: DATEDIFF(DAY, col, CAST(DATEADD(HOUR,9,GETUTCDATE()) AS DATE))
+- KST now:        DATEADD(hour, 9, GETUTCDATE())
+- Stored→KST date: CAST(DATEADD(hour, 15, col) AS DATE)
+- Year boundary:  DATEFROMPARTS(YEAR(DATEADD(DAY,-1,CAST(DATEADD(hour,9,GETUTCDATE()) AS DATE)))-N, 1, 1)
+- Date diff:      DATEDIFF(DAY, col, CAST(DATEADD(hour,9,GETUTCDATE()) AS DATE))
 - ISNULL(col,'')  IIF(cond,a,b)  CAST(col AS DATE)
+
+=== FORMATTING ===
+Right-align SQL keywords to 6 chars, then 2 spaces before content.
 
 === OUTPUT ===
 Output ONLY the SQL query. No explanation, no markdown, no code fences.
 SELECT only — no INSERT/UPDATE/DELETE/CREATE/DROP/TRUNCATE.
-No DECLARE, #temp, @var, CURSOR, WHILE, PIVOT, FOR XML/JSON.
+No DECLARE, #temp, @var, CURSOR, WHILE, PIVOT.
 
 === DATA EXTENSIONS (SQL tables) ===
 ${schemaCtx}`;
