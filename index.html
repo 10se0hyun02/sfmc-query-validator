@@ -1674,25 +1674,53 @@ async function generateQuery() {
   document.getElementById('ai-msg').style.display = 'none';
 
   const schemaCtx = _buildSchemaContext();
-  const systemPrompt = `You are an SFMC Automation Studio SQL expert. Generate T-SQL for SQL Query Activity.
+  const systemPrompt = `You are an SFMC Automation Studio T-SQL expert generating queries for SQL Query Activity.
 
-=== STRICT SCHEMA RULES (most important) ===
-- Use ONLY the DE names and column names defined in the schema below. Never invent or assume any table/column name.
-- Enclose every DE name in square brackets exactly as written, e.g. [RC_Order].
-- If the user's condition requires a column that does not exist in the schema, write a -- ⚠ 컬럼 없음: [DE명.컬럼명] comment and omit that condition from the WHERE clause.
-- Choose the most relevant DE(s) from the schema based on the user's description. JOIN multiple DEs when needed.
+=== THIS IS T-SQL, NOT SOQL ===
+Data Extensions are plain SQL tables. Use standard T-SQL SELECT/FROM/JOIN syntax ONLY.
+NEVER use SOQL syntax: no LIMIT, OFFSET, TYPEOF, WITH SECURITY_ENFORCED, no dot-relationship traversal (e.g. Account.Name is forbidden).
+NEVER treat DEs as Salesforce objects. They are flat SQL tables joined with explicit JOIN … ON clauses.
 
-=== OUTPUT RULES ===
-- Output ONLY the SQL query — no explanation, no markdown, no code fences.
-- SELECT only: no INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TRUNCATE.
-- No DECLARE, temp tables (#temp), table variables (@var), CURSOR, WHILE, PIVOT, FOR XML/JSON.
+=== SCHEMA RULES ===
+- Use ONLY DE names and column names from the schema below. Never invent or guess names.
+- Enclose every DE name in square brackets: [RC_Order].
+- Missing column → add -- ⚠ 컬럼 없음 comment, skip that condition.
+
+=== EXACT FORMATTING (copy this style precisely) ===
+Right-align SQL keywords to 6 chars, then 2 spaces before content.
+
+SELECT  a.ColA,
+        a.ColB,
+        b.ColC
+  FROM  [DE_A] a
+ INNER JOIN [DE_B] b
+    ON  b.KeyCol = a.KeyCol
+  LEFT JOIN [DE_C] c
+    ON  c.KeyCol = a.KeyCol
+ WHERE  a.Col1 = 'value'
+   AND  a.DateCol >= DATEADD(DAY, -30, GETDATE())
+   AND  NOT EXISTS (
+         SELECT  1
+           FROM  [DE_D] d
+          WHERE  d.KeyCol = a.KeyCol
+        )
+
+Keyword alignment rules:
+- SELECT, FROM, WHERE, HAVING, GROUP, ORDER → right-pad to 6 chars + 2 spaces (SELECT·· / ··FROM·· / ·WHERE·· / ···AND·· / ····OR··)
+- Continuation columns after SELECT → indent 8 spaces to align with first column
+- INNER JOIN / LEFT JOIN → on its own line; ON → "····ON··" (4 spaces + ON + 2 spaces)
+- AND / OR → "···AND··" / "····OR··" to align under WHERE
 
 === T-SQL FUNCTIONS ===
-- Current datetime: GETDATE()
-- Date arithmetic: DATEADD(unit, n, date)  e.g. DATEADD(DAY, -30, GETDATE())
-- Null handling: ISNULL(col, default)
+- GETDATE()  DATEADD(DAY,-30,GETDATE())  DATEDIFF(DAY,col,GETDATE())
+- ISNULL(col,'')  IIF(cond,a,b)  CAST(col AS INT)
 
-=== AVAILABLE DATA EXTENSIONS ===
+=== OUTPUT ===
+Output ONLY the SQL query. No explanation, no markdown, no code fences.
+SELECT only — no INSERT/UPDATE/DELETE/CREATE/DROP/TRUNCATE.
+No DECLARE, #temp, @var, CURSOR, WHILE, PIVOT, FOR XML/JSON.
+
+=== DATA EXTENSIONS (SQL tables) ===
 ${schemaCtx}`;
 
   const userMsg = [
