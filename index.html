@@ -1873,20 +1873,27 @@ async function verifyConditions() {
     exclude ? `[제외 조건]\n${exclude}` : '',
   ].filter(Boolean).join('\n\n');
 
-  const systemPrompt = `You are an SFMC T-SQL query reviewer. Compare the given target conditions against the SQL query and check whether each condition is correctly implemented.
+  const systemPrompt = `You are an SFMC T-SQL query reviewer. Do two things:
+1. Check whether each stated target condition is correctly implemented in the SQL.
+2. Also extract additional conditions/logic present in the SQL that were NOT mentioned in the target conditions, and list them as "extra" items.
 
 Respond ONLY with a valid JSON object in this exact format (no markdown, no explanation):
 {
   "items": [
-    {"label": "조건 요약 (15자 이내)", "status": "pass", "detail": "어떤 WHERE/JOIN 로직으로 구현됐는지 설명"},
-    {"label": "조건 요약", "status": "fail", "detail": "어떤 부분이 빠졌거나 잘못됐는지 설명"},
-    {"label": "조건 요약", "status": "warn", "detail": "구현됐으나 확인 필요한 부분 설명"}
+    {"label": "조건 요약 (15자 이내)", "status": "pass",  "detail": "어떤 WHERE/JOIN/로직으로 구현됐는지 설명"},
+    {"label": "조건 요약",             "status": "fail",  "detail": "어떤 부분이 빠졌거나 잘못됐는지 설명"},
+    {"label": "조건 요약",             "status": "warn",  "detail": "구현됐으나 확인 필요한 부분 설명"},
+    {"label": "추가조건 요약",         "status": "extra", "detail": "타겟 조건에는 없지만 쿼리에 적용된 내용 설명"}
   ],
   "verdict": "PASS",
   "summary": "전체 한 줄 요약"
 }
-status values: "pass" (✅ 반영됨), "fail" (❌ 미반영), "warn" (⚠️ 불확실)
-verdict: "PASS" if all conditions are implemented, "FAIL" if any are missing.
+status values:
+- "pass"  → ✅ 반영됨 (stated condition correctly implemented)
+- "fail"  → ❌ 미반영 (stated condition missing or wrong)
+- "warn"  → ⚠️ 불확실 (implemented but needs review)
+- "extra" → 🔍 추가확인 (in the query but NOT in the stated conditions — e.g. phone filter, withdrawal check, dedup logic, date boundary rules, etc.)
+verdict: "PASS" if all stated conditions are implemented, "FAIL" if any are missing.
 Respond in Korean.`;
 
   const userMsg = `=== 타겟 조건 ===\n${conditionText}\n\n=== SQL 쿼리 ===\n${sql}`;
@@ -1957,15 +1964,29 @@ function _renderVerifyResult(result) {
   const summary = result.summary || '';
   const isPass  = verdict === 'PASS';
 
-  const itemsHtml = items.map(item => {
-    const icon  = item.status === 'pass' ? '✅' : item.status === 'warn' ? '⚠️' : '❌';
-    const cls   = item.status === 'pass' ? 'info' : item.status === 'warn' ? 'warning' : 'error';
+  const stated = items.filter(i => i.status !== 'extra');
+  const extra  = items.filter(i => i.status === 'extra');
+
+  const renderItem = item => {
+    const icon = { pass:'✅', fail:'❌', warn:'⚠️', extra:'🔍' }[item.status] || '🔍';
+    const cls  = { pass:'info', fail:'error', warn:'warning', extra:'' }[item.status] || '';
+    const extraStyle = item.status === 'extra'
+      ? 'background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;'
+      : '';
     return `
-      <div class="issue-item ${cls}" style="margin-bottom:6px;">
-        <span class="issue-badge ${cls}">${icon} ${item.label}</span>
-        <div class="issue-msg">${item.detail}</div>
+      <div class="${cls ? `issue-item ${cls}` : ''}" style="margin-bottom:6px;${extraStyle}">
+        <span class="${cls ? `issue-badge ${cls}` : ''}" style="${!cls ? 'font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;' : ''}">${icon} ${item.label}</span>
+        <div class="${cls ? 'issue-msg' : ''}" style="font-size:12px;color:var(--text-muted);">${item.detail}</div>
       </div>`;
-  }).join('');
+  };
+
+  const statedHtml = stated.map(renderItem).join('');
+  const extraHtml  = extra.length === 0 ? '' : `
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.04em;">🔍 쿼리에 적용된 추가 조건</div>
+      ${extra.map(renderItem).join('')}
+    </div>`;
+  const itemsHtml = statedHtml + extraHtml;
 
   document.getElementById('tsql-result').innerHTML = `
     <div style="padding:14px 14px 0;">
