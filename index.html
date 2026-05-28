@@ -1838,7 +1838,7 @@ async function verifyConditions() {
   if (!apiKey) { alert('AI API 키를 먼저 설정하세요 (🔑 API 키 버튼).'); return; }
 
   // 검사 결과 탭으로 전환 후 로딩 표시
-  switchTab('tsql', 'tsql-result');
+  openSubTab('tsql', 'tsql-result');
   document.getElementById('tsql-result').innerHTML = `
     <div style="padding:24px;text-align:center;color:var(--text-muted);">
       <div style="font-size:24px;margin-bottom:10px;">🎯</div>
