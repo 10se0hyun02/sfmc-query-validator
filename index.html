@@ -53,10 +53,10 @@
         <div id="ai-panel-body">
           <div id="ai-key-form" style="display:none;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);">
             <div style="display:flex;gap:6px;align-items:center;">
-              <input class="mock-input" id="ai-api-key" type="password" placeholder="sk-ant-api03-..." style="flex:1;font-size:12px;" />
+              <input class="mock-input" id="ai-api-key" type="password" placeholder="AIzaSy..." style="flex:1;font-size:12px;" />
               <button class="btn btn-primary" style="white-space:nowrap;font-size:12px;" onclick="saveAiKey()">저장</button>
             </div>
-            <p style="font-size:11px;color:var(--text-muted);margin-top:5px;">Anthropic Console에서 발급. localStorage에만 저장되며 서버로 전송되지 않습니다.</p>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:5px;">aistudio.google.com → Get API key (무료). localStorage에만 저장됩니다.</p>
           </div>
           <div class="ai-fields">
             <div class="ai-field">
@@ -1649,19 +1649,14 @@ function _buildSchemaContext() {
 }
 
 async function generateQuery() {
-  const apiKey   = localStorage.getItem(AI_KEY_LS) || document.getElementById('ai-api-key').value.trim();
-  const proxyUrl = sfmc.proxyUrl;
-  const include  = document.getElementById('ai-prompt-include').value.trim();
+  const apiKey  = localStorage.getItem(AI_KEY_LS) || document.getElementById('ai-api-key').value.trim();
+  const include = document.getElementById('ai-prompt-include').value.trim();
   const exclude  = document.getElementById('ai-prompt-exclude').value.trim();
 
   if (!apiKey) {
     document.getElementById('ai-key-form').style.display = '';
     document.getElementById('ai-api-key').focus();
-    _showAiMsg('API 키를 먼저 입력해주세요.', 'error');
-    return;
-  }
-  if (!proxyUrl) {
-    _showAiMsg('🔗 DE 연결 탭 → 프록시 URL을 먼저 설정하고 저장하세요.', 'error');
+    _showAiMsg('Google AI Studio API 키를 먼저 입력해주세요.', 'error');
     return;
   }
   if (!include && !exclude) {
@@ -1696,25 +1691,30 @@ async function generateQuery() {
 === AVAILABLE DATA EXTENSIONS ===
 ${schemaCtx}`;
 
+  const userMsg = [
+    include ? `[타겟 대상 조건]\n${include}` : '',
+    exclude ? `[타겟 대상 제외 조건]\n${exclude}` : '',
+  ].filter(Boolean).join('\n\n');
+
   try {
-    const resp = await fetch(`${proxyUrl}/claude`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        apiKey,
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: [
-          include ? `[타겟 대상 조건]\n${include}` : '',
-          exclude ? `[타겟 대상 제외 조건]\n${exclude}` : '',
-        ].filter(Boolean).join('\n\n') }],
-      }),
-    });
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: userMsg }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+        }),
+      }
+    );
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error?.message || `HTTP ${resp.status}`);
 
-    const sql = data.content?.[0]?.text?.trim() || '';
+    let sql = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    // 마크다운 코드펜스 제거 (Gemini가 간혹 붙임)
+    sql = sql.replace(/^```sql\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim();
     if (!sql) throw new Error('생성된 쿼리가 없습니다.');
 
     if (tsqlEditor) {

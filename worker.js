@@ -11,7 +11,6 @@
  */
 
 const ALLOWED_HOST_SUFFIX = '.marketingcloudapis.com';
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
 export default {
   async fetch(request) {
@@ -24,11 +23,6 @@ export default {
     // Preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders });
-    }
-
-    // Claude API proxy route
-    if (new URL(request.url).pathname === '/claude') {
-      return handleClaudeProxy(request, corsHeaders);
     }
 
     const target = request.headers.get('X-Sfmc-Target');
@@ -73,36 +67,6 @@ export default {
     });
   },
 };
-
-async function handleClaudeProxy(request, corsHeaders) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: 'JSON 파싱 실패' }, 400, corsHeaders);
-  }
-
-  const { apiKey, ...claudePayload } = body;
-  if (!apiKey) {
-    return json({ error: 'apiKey가 필요합니다.' }, 400, corsHeaders);
-  }
-
-  const resp = await fetch(CLAUDE_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify(claudePayload),
-  });
-
-  const data = await resp.json();
-  return new Response(JSON.stringify(data), {
-    status: resp.status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders },
-  });
-}
 
 function json(obj, status, extra = {}) {
   return new Response(JSON.stringify(obj), {
