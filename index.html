@@ -35,6 +35,7 @@
     <button class="btn btn-primary" id="tsql-btn-validate">검증하기</button>
     <button class="btn btn-fix" id="tsql-btn-autofix">🔧 수정</button>
     <button class="btn btn-count" id="tsql-btn-count" onclick="checkCount()">🔢 모수 확인</button>
+    <button class="btn btn-verify" id="tsql-btn-verify" onclick="verifyConditions()">🎯 조건 검증</button>
     <div class="action-bar-sep"></div>
     <button class="btn btn-secondary" id="tsql-btn-save">💾 저장</button>
     <button class="btn btn-secondary" id="tsql-btn-load">📂 불러오기</button>
@@ -1821,6 +1822,141 @@ async function checkCount() {
       _deleteSoapObject(subdomain, token, 'DataExtension',   deKey);
     }, 3000);
   }
+}
+
+// ── 조건 검증 ─────────────────────────────────────────────────────
+async function verifyConditions() {
+  if (!tsqlEditor) return;
+  const sql     = tsqlEditor.getValue().trim();
+  const include = document.getElementById('ai-prompt-include').value.trim();
+  const exclude = document.getElementById('ai-prompt-exclude').value.trim();
+
+  if (!sql) { alert('에디터에 쿼리를 먼저 입력하세요.'); return; }
+  if (!include && !exclude) { alert('AI 패널에 타겟 조건을 먼저 입력하세요.'); return; }
+
+  const apiKey = localStorage.getItem(AI_KEY_LS) || document.getElementById('ai-api-key').value.trim();
+  if (!apiKey) { alert('AI API 키를 먼저 설정하세요 (🔑 API 키 버튼).'); return; }
+
+  // 검사 결과 탭으로 전환 후 로딩 표시
+  switchTab('tsql', 'tsql-result');
+  document.getElementById('tsql-result').innerHTML = `
+    <div style="padding:24px;text-align:center;color:var(--text-muted);">
+      <div style="font-size:24px;margin-bottom:10px;">🎯</div>
+      <div style="font-size:13px;">AI가 쿼리와 조건을 대조 중입니다...</div>
+    </div>`;
+
+  const conditionText = [
+    include ? `[포함 조건]\n${include}` : '',
+    exclude ? `[제외 조건]\n${exclude}` : '',
+  ].filter(Boolean).join('\n\n');
+
+  const systemPrompt = `You are an SFMC T-SQL query reviewer. Compare the given target conditions against the SQL query and check whether each condition is correctly implemented.
+
+Respond ONLY with a valid JSON object in this exact format (no markdown, no explanation):
+{
+  "items": [
+    {"label": "조건 요약 (15자 이내)", "status": "pass", "detail": "어떤 WHERE/JOIN 로직으로 구현됐는지 설명"},
+    {"label": "조건 요약", "status": "fail", "detail": "어떤 부분이 빠졌거나 잘못됐는지 설명"},
+    {"label": "조건 요약", "status": "warn", "detail": "구현됐으나 확인 필요한 부분 설명"}
+  ],
+  "verdict": "PASS",
+  "summary": "전체 한 줄 요약"
+}
+status values: "pass" (✅ 반영됨), "fail" (❌ 미반영), "warn" (⚠️ 불확실)
+verdict: "PASS" if all conditions are implemented, "FAIL" if any are missing.
+Respond in Korean.`;
+
+  const userMsg = `=== 타겟 조건 ===\n${conditionText}\n\n=== SQL 쿼리 ===\n${sql}`;
+
+  try {
+    let text = '';
+    const isGroq   = apiKey.startsWith('gsk_');
+    const isGemini = apiKey.startsWith('AIza');
+
+    if (isGroq) {
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }],
+          temperature: 0.1, max_tokens: 2048,
+          response_format: { type: 'json_object' },
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error?.message || `HTTP ${resp.status}`);
+      text = data.choices?.[0]?.message?.content?.trim() || '{}';
+
+    } else if (isGemini) {
+      const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      const listData = await listResp.json();
+      const available = (listData.models || []).map(m => m.name.replace('models/', ''));
+      const preferred = ['gemini-2.0-flash','gemini-2.0-flash-exp','gemini-1.5-flash'];
+      let modelUrl = null;
+      for (const p of preferred) {
+        if (available.some(a => a.startsWith(p))) { modelUrl = `https://generativelanguage.googleapis.com/v1beta/models/${p}:generateContent`; break; }
+      }
+      if (!modelUrl) throw new Error('사용 가능한 Gemini 모델이 없습니다.');
+      const resp = await fetch(`${modelUrl}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userMsg }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error?.message || `HTTP ${resp.status}`);
+      text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';
+      text = text.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/,'').trim();
+
+    } else {
+      throw new Error('API 키 형식을 알 수 없습니다. (gsk_ 또는 AIzaSy...)');
+    }
+
+    const result = JSON.parse(text);
+    _renderVerifyResult(result);
+
+  } catch(err) {
+    document.getElementById('tsql-result').innerHTML = `
+      <div class="issue-item error" style="margin:12px;">
+        <span class="issue-badge error">오류</span>
+        <div class="issue-msg">${err.message}</div>
+      </div>`;
+  }
+}
+
+function _renderVerifyResult(result) {
+  const items  = result.items || [];
+  const verdict = result.verdict || 'FAIL';
+  const summary = result.summary || '';
+  const isPass  = verdict === 'PASS';
+
+  const itemsHtml = items.map(item => {
+    const icon  = item.status === 'pass' ? '✅' : item.status === 'warn' ? '⚠️' : '❌';
+    const cls   = item.status === 'pass' ? 'info' : item.status === 'warn' ? 'warning' : 'error';
+    return `
+      <div class="issue-item ${cls}" style="margin-bottom:6px;">
+        <span class="issue-badge ${cls}">${icon} ${item.label}</span>
+        <div class="issue-msg">${item.detail}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('tsql-result').innerHTML = `
+    <div style="padding:14px 14px 0;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:13px;font-weight:600;color:var(--text);">🎯 조건 검증 결과</span>
+        <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;
+          background:${isPass ? 'rgba(112,200,152,0.15)' : 'rgba(240,144,112,0.15)'};
+          color:${isPass ? 'var(--success)' : 'var(--error)'};">
+          ${isPass ? '✅ PASS' : '❌ FAIL'}
+        </span>
+      </div>
+      ${summary ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">${summary}</div>` : ''}
+      ${itemsHtml}
+    </div>`;
 }
 
 // ── AI Query Generator ────────────────────────────────────────────

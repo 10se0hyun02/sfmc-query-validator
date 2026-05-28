@@ -192,6 +192,11 @@ body {
 .btn-count:hover { background: rgba(112,204,224,0.18); opacity: 1; }
 body.light .btn-count { background: #e8f6fb; color: #0070d2; border-color: #0070d2; }
 
+/* Verify — purple */
+.btn-verify { background: rgba(180,140,255,0.1); color: #b48cff; border-color: #b48cff; }
+.btn-verify:hover { background: rgba(180,140,255,0.18); opacity: 1; }
+body.light .btn-verify { background: #f3eeff; color: #6e3fc7; border-color: #6e3fc7; }
+
 /* Run */
 .btn-run { background: var(--success); color: #0a1c35; border-color: var(--success); }
 
