@@ -18,9 +18,10 @@
     <h1>SFMC Query Validator</h1>
     <span>Automation Studio · Journey MySQL</span>
   </div>
-  <button id="btn-theme" title="라이트/다크 모드 전환"
-    style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:20px;width:34px;height:34px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;">
-    <span id="theme-icon">☀️</span>
+  <button id="btn-theme" title="라이트/다크 모드 전환" style="margin-left:auto;flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;">
+    <span id="theme-icon" style="display:block;width:44px;height:24px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);position:relative;transition:background 0.2s,border-color 0.2s;">
+      <span style="display:block;width:18px;height:18px;border-radius:50%;background:var(--text-muted);position:absolute;top:2px;left:2px;transition:transform 0.2s,background 0.2s;"></span>
+    </span>
   </button>
 </div>
 
@@ -387,13 +388,18 @@ const _colorObserver = new MutationObserver(() => fixStringColor());
 _colorObserver.observe(document.head, { childList: true, subtree: true });
 
 function applyTheme() {
+  const dot = themeIcon.querySelector('span');
   if (isLight) {
     document.body.classList.add('light');
-    themeIcon.textContent = '🌙';
+    themeIcon.style.background = '#d0e4f7';
+    themeIcon.style.borderColor = '#a8c8ea';
+    if (dot) { dot.style.transform = 'translateX(20px)'; dot.style.background = '#0176d3'; }
     if (typeof monaco !== 'undefined') monaco.editor.setTheme('vs');
   } else {
     document.body.classList.remove('light');
-    themeIcon.textContent = '☀️';
+    themeIcon.style.background = '';
+    themeIcon.style.borderColor = '';
+    if (dot) { dot.style.transform = ''; dot.style.background = ''; }
     if (typeof monaco !== 'undefined') { monaco.editor.setTheme('custom-dark'); setTimeout(fixStringColor, 200); }
   }
   localStorage.setItem('sfmc_theme', isLight ? 'light' : 'dark');
