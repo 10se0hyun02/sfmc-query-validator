@@ -727,16 +727,47 @@ require(['vs/editor/editor.main'], function () {
 });
 
 // ── Query Editor Tabs ────────────────────────────────────────────
+const LS_QT = 'sfmc_qtabs_v2';
+
 const _qt = {
   tabs: [{ id: 1, name: '쿼리 1', content: '' }],
   activeId: 1,
   _nextId: 2,
 };
 
+function _qtPersist() {
+  try {
+    localStorage.setItem(LS_QT, JSON.stringify({
+      tabs: _qt.tabs.map(t => ({ id: t.id, name: t.name, content: t.content })),
+      activeId: _qt.activeId,
+      nextId: _qt._nextId,
+    }));
+  } catch {}
+}
+
+function _qtLoad() {
+  try {
+    const raw = localStorage.getItem(LS_QT);
+    if (!raw) return false;
+    const saved = JSON.parse(raw);
+    if (!Array.isArray(saved.tabs) || saved.tabs.length === 0) return false;
+    _qt.tabs     = saved.tabs;
+    _qt.activeId = saved.activeId;
+    _qt._nextId  = saved.nextId || (Math.max(...saved.tabs.map(t => t.id)) + 1);
+    return true;
+  } catch { return false; }
+}
+
 function initQueryTabs() {
-  _qt.tabs[0].content = tsqlEditor.getValue();
+  const restored = _qtLoad();
+  if (restored) {
+    const active = _qt.tabs.find(t => t.id === _qt.activeId);
+    if (active && tsqlEditor) tsqlEditor.setValue(active.content);
+  } else {
+    _qt.tabs[0].content = tsqlEditor.getValue();
+    _qtPersist();
+  }
   _qtRender();
-  // Ctrl+T: 새 탭  /  Ctrl+W: 현재 탭 닫기
   tsqlEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyT, _qtAdd);
   tsqlEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, () => _qtClose(_qt.activeId));
 }
@@ -749,12 +780,10 @@ function _qtSaveActive() {
 function _qtSwitchTo(id) {
   if (id === _qt.activeId) return;
   _qtSaveActive();
+  _qtPersist();
   _qt.activeId = id;
   const t = _qt.tabs.find(t => t.id === id);
-  if (t && tsqlEditor) {
-    tsqlEditor.setValue(t.content);
-    tsqlEditor.focus();
-  }
+  if (t && tsqlEditor) { tsqlEditor.setValue(t.content); tsqlEditor.focus(); }
   _qtRender();
 }
 
@@ -765,10 +794,12 @@ function _qtAdd() {
   _qt.tabs.push({ id, name, content: '' });
   _qt.activeId = id;
   if (tsqlEditor) { tsqlEditor.setValue(''); tsqlEditor.focus(); }
+  _qtPersist();
   _qtRender();
-  // 탭바 끝으로 스크롤
-  const bar = document.getElementById('query-tabs-bar');
-  if (bar) bar.scrollLeft = bar.scrollWidth;
+  requestAnimationFrame(() => {
+    const bar = document.getElementById('query-tabs-bar');
+    if (bar) bar.scrollLeft = bar.scrollWidth;
+  });
 }
 
 function _qtClose(id) {
@@ -781,10 +812,13 @@ function _qtClose(id) {
     _qt.activeId = next.id;
     if (tsqlEditor) { tsqlEditor.setValue(next.content); tsqlEditor.focus(); }
   }
+  _qtPersist();
   _qtRender();
 }
 
 function _qtStartRename(id) {
+  // 현재 에디터 내용 먼저 저장
+  _qtSaveActive();
   const bar = document.getElementById('query-tabs-bar');
   const nameEl = bar?.querySelector(`.query-tab[data-id="${id}"] .qt-name`);
   const tab = _qt.tabs.find(t => t.id === id);
@@ -792,10 +826,11 @@ function _qtStartRename(id) {
 
   const input = document.createElement('input');
   input.value = tab.name;
-  input.style.cssText = 'width:100%;font-size:12px;background:transparent;border:none;outline:none;color:inherit;';
+  input.style.cssText = 'width:100%;font-size:12px;font-weight:inherit;background:transparent;border:none;outline:1px solid var(--accent);border-radius:2px;color:inherit;padding:0 2px;';
   const finish = () => {
     const v = input.value.trim();
     if (v) tab.name = v;
+    _qtPersist();
     _qtRender();
   };
   input.addEventListener('blur', finish);
@@ -813,35 +848,49 @@ function _qtRender() {
   if (!bar) return;
   bar.innerHTML = '';
 
-  _qt.tabs.forEach(tab => {
+  _qt.tabs.forEach((tab, i) => {
+    const isActive = tab.id === _qt.activeId;
+
     const el = document.createElement('div');
-    el.className = 'query-tab' + (tab.id === _qt.activeId ? ' active' : '');
+    el.className = 'query-tab' + (isActive ? ' active' : '');
     el.dataset.id = tab.id;
-    el.title = tab.name + ' (더블클릭: 이름 변경)';
+    el.title = `${tab.name}  (더블클릭: 이름 변경)`;
+
+    // SQL 뱃지
+    const iconEl = document.createElement('span');
+    iconEl.className = 'qt-icon';
+    iconEl.textContent = 'SQL';
 
     const nameEl = document.createElement('span');
     nameEl.className = 'qt-name';
     nameEl.textContent = tab.name;
 
-    el.appendChild(nameEl);
+    const closeEl = document.createElement('button');
+    closeEl.className = 'qt-close';
+    closeEl.innerHTML = '&times;';
+    closeEl.title = '탭 닫기 (Ctrl+W)';
+    closeEl.addEventListener('click', e => { e.stopPropagation(); _qtClose(tab.id); });
 
-    // 탭이 2개 이상이면 닫기 버튼 표시
-    if (_qt.tabs.length > 1) {
-      const closeEl = document.createElement('button');
-      closeEl.className = 'qt-close';
-      closeEl.innerHTML = '&times;';
-      closeEl.title = '탭 닫기 (Ctrl+W)';
-      closeEl.addEventListener('click', e => { e.stopPropagation(); _qtClose(tab.id); });
-      el.appendChild(closeEl);
-    }
+    el.append(iconEl, nameEl, closeEl);
 
     el.addEventListener('click', () => _qtSwitchTo(tab.id));
     el.addEventListener('dblclick', e => {
-      if (e.target.classList.contains('qt-close')) return;
+      if (e.target === closeEl) return;
       _qtStartRename(tab.id);
     });
 
     bar.appendChild(el);
+
+    // 비활성 탭 사이 구분선 (인접한 두 탭 모두 비활성일 때만)
+    if (i < _qt.tabs.length - 1) {
+      const nextTab = _qt.tabs[i + 1];
+      const nextActive = nextTab.id === _qt.activeId;
+      if (!isActive && !nextActive) {
+        const sep = document.createElement('div');
+        sep.className = 'qt-sep';
+        bar.appendChild(sep);
+      }
+    }
   });
 
   const addBtn = document.createElement('button');
