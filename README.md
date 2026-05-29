@@ -10,6 +10,19 @@
 
 ---
 
+## 스크린샷
+
+**다크 모드 — AI 쿼리 생성 패널**
+![메인 화면](assets/screenshot-main.png)
+
+**검증 결과 — 오류·경고 목록**
+![검증 결과](assets/screenshot-validation.png)
+
+**라이트 모드**
+![라이트 모드](assets/screenshot-light.png)
+
+---
+
 ## 왜 만들었나
 
 Salesforce Marketing Cloud(SFMC)의 SQL Query Activity는 일반 T-SQL과 미묘하게 다릅니다.  
